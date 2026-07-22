@@ -268,7 +268,7 @@ h3 {
 
 .results-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 12px;
 }
 
@@ -598,4 +598,18 @@ h3 {
 
 .time-limit-bar span.danger {
   background: #ff6b6b;
+}
+
+
+.attempt-row.cutoff-ended {
+  opacity: 0.45;
+  background: rgba(255, 107, 107, 0.08);
+}
+
+#cutoff-status.failed {
+  color: #ff9aa2;
+}
+
+#cutoff-status.passed {
+  color: var(--green);
 }

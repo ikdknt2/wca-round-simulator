@@ -22,6 +22,14 @@ class Rule {
     return this.format.type;
   }
 
+  getDefaultCutoffAttempts() {
+    return Math.min(this.format.cutoffAttempts ?? this.format.attempts, this.format.attempts);
+  }
+
+  hasDefaultCutoff() {
+    return Boolean(this.format.cutoffAttempts);
+  }
+
   getEffectiveTime(attempt) {
     if (!attempt || attempt.penalty === 'DNF') {
       return Infinity;
@@ -113,6 +121,10 @@ const openDialogButton = document.querySelector('#open-attempt-dialog');
 const closeDialogButton = document.querySelector('#close-attempt-dialog');
 const cancelAttemptButton = document.querySelector('#cancel-attempt');
 
+const cutoffStatus = document.querySelector('#cutoff-status');
+const cutoffEnabled = document.querySelector('#cutoff-enabled');
+const cutoffTimeInput = document.querySelector('#cutoff-time-input');
+const cutoffAttemptsSelect = document.querySelector('#cutoff-attempts-select');
 const timeLimitEnabled = document.querySelector('#time-limit-enabled');
 const timeLimitInput = document.querySelector('#time-limit-input');
 const timeLimitSummary = document.querySelector('#time-limit-summary');
@@ -255,6 +267,11 @@ function saveAutomaticDnf(limitMs) {
     return;
   }
 
+  if (attempts.length >= getAllowedAttemptCount()) {
+    closeAttemptDialog();
+    return;
+  }
+
   attempts.push({
     timeText: formatMilliseconds(limitMs),
     timeMs: limitMs,
@@ -289,6 +306,73 @@ function applyTimeLimitToAttempt(attempt) {
   };
 }
 
+
+function getCutoffTimeMilliseconds() {
+  if (!cutoffEnabled.checked) {
+    return null;
+  }
+
+  return parseTimeToMilliseconds(cutoffTimeInput.value);
+}
+
+function getCutoffAttemptCount() {
+  return Math.min(Number(cutoffAttemptsSelect.value), currentRule.getAttemptCount());
+}
+
+function getCutoffState(filledAttempts = attempts.slice(0, currentRule.getAttemptCount())) {
+  const cutoffMs = getCutoffTimeMilliseconds();
+  const cutoffAttemptCount = getCutoffAttemptCount();
+
+  if (cutoffMs === null) {
+    return { enabled: false, passed: false, failed: false, cutoffMs, cutoffAttemptCount };
+  }
+
+  const cutoffAttempts = filledAttempts.slice(0, cutoffAttemptCount);
+  const passed = cutoffAttempts.some((attempt) => currentRule.getEffectiveTime(attempt) <= cutoffMs);
+  const failed = cutoffAttempts.length >= cutoffAttemptCount && !passed;
+
+  return { enabled: true, passed, failed, cutoffMs, cutoffAttemptCount };
+}
+
+function getAllowedAttemptCount(filledAttempts = attempts.slice(0, currentRule.getAttemptCount())) {
+  const cutoffState = getCutoffState(filledAttempts);
+  return cutoffState.failed ? cutoffState.cutoffAttemptCount : currentRule.getAttemptCount();
+}
+
+function updateCutoffSummary(filledAttempts = attempts.slice(0, currentRule.getAttemptCount())) {
+  const cutoffState = getCutoffState(filledAttempts);
+
+  cutoffStatus.className = '';
+
+  if (!cutoffState.enabled) {
+    cutoffStatus.textContent = 'OFF';
+    return;
+  }
+
+  if (cutoffState.failed) {
+    cutoffStatus.textContent = 'Cutoff Failed';
+    cutoffStatus.classList.add('failed');
+    return;
+  }
+
+  if (cutoffState.passed) {
+    cutoffStatus.textContent = 'Cutoff Passed';
+    cutoffStatus.classList.add('passed');
+    return;
+  }
+
+  cutoffStatus.textContent = `${formatMilliseconds(cutoffState.cutoffMs)} / Best of ${cutoffState.cutoffAttemptCount}`;
+}
+
+function syncCutoffDefaults({ updateEnabled = false } = {}) {
+  const defaultAttempts = String(currentRule.getDefaultCutoffAttempts());
+  cutoffAttemptsSelect.value = defaultAttempts;
+
+  if (updateEnabled) {
+    cutoffEnabled.checked = currentRule.hasDefaultCutoff();
+  }
+}
+
 function getAttemptDisplay(attempt) {
   if (!attempt) {
     return 'Pending';
@@ -300,14 +384,17 @@ function getAttemptDisplay(attempt) {
 function renderAttempts() {
   const attemptCount = currentRule.getAttemptCount();
   const filledAttempts = attempts.slice(0, attemptCount);
+  const cutoffState = getCutoffState(filledAttempts);
+  const allowedAttemptCount = getAllowedAttemptCount(filledAttempts);
 
   emptyAttempts.hidden = true;
   attemptList.querySelectorAll('.attempt-row').forEach((row) => row.remove());
 
   const rows = Array.from({ length: attemptCount }, (_, index) => {
     const attempt = filledAttempts[index];
+    const isCutoffEnded = cutoffState.failed && index >= allowedAttemptCount;
     const row = document.createElement('div');
-    row.className = `attempt-row${attempt ? '' : ' pending'}`;
+    row.className = `attempt-row${attempt ? '' : ' pending'}${isCutoffEnded ? ' cutoff-ended' : ''}`;
 
     if (attempt) {
       row.dataset.timeMs = String(attempt.timeMs);
@@ -320,15 +407,15 @@ function renderAttempts() {
 
     const name = document.createElement('span');
     name.className = 'attempt-name';
-    name.textContent = getAttemptDisplay(attempt);
+    name.textContent = isCutoffEnded ? 'Cutoff Failed' : getAttemptDisplay(attempt);
 
     const penalty = document.createElement('span');
     penalty.className = `attempt-status${!attempt || attempt.penalty === 'None' ? ' muted' : ''}`;
-    penalty.textContent = attempt?.penalty ?? 'Pending';
+    penalty.textContent = isCutoffEnded ? 'Ended' : attempt?.penalty ?? 'Pending';
 
     const comment = document.createElement('span');
     comment.className = 'attempt-comment';
-    comment.textContent = [attempt?.comment || 'No comment', attempt?.warning].filter(Boolean).join(' / ');
+    comment.textContent = isCutoffEnded ? '残りAttemptは自動終了しました。' : [attempt?.comment || 'No comment', attempt?.warning].filter(Boolean).join(' / ');
 
     row.append(number, name, penalty, comment);
     return row;
@@ -349,10 +436,11 @@ function renderSummary(filledAttempts) {
   averageValue.textContent = formatMilliseconds(statistics.average);
   bestValue.textContent = formatMilliseconds(statistics.best);
   worstValue.textContent = formatMilliseconds(statistics.worst);
+  updateCutoffSummary(filledAttempts);
 }
 
 function openAttemptDialog() {
-  if (attempts.length >= currentRule.getAttemptCount()) {
+  if (attempts.length >= getAllowedAttemptCount()) {
     formError.textContent = '';
     return;
   }
@@ -373,7 +461,7 @@ function closeAttemptDialog() {
 function saveAttempt(event) {
   event.preventDefault();
 
-  if (attempts.length >= currentRule.getAttemptCount()) {
+  if (attempts.length >= getAllowedAttemptCount()) {
     closeAttemptDialog();
     return;
   }
@@ -403,11 +491,15 @@ function saveAttempt(event) {
 
 function changeFormat() {
   currentRule = new Rule(formatSelect.value);
+  syncCutoffDefaults({ updateEnabled: true });
   attempts.splice(currentRule.getAttemptCount());
   renderAttempts();
 }
 
 formatSelect.addEventListener('change', changeFormat);
+cutoffEnabled.addEventListener('change', renderAttempts);
+cutoffTimeInput.addEventListener('input', renderAttempts);
+cutoffAttemptsSelect.addEventListener('change', renderAttempts);
 timeLimitEnabled.addEventListener('change', updateTimeLimitSummary);
 timeLimitInput.addEventListener('input', updateTimeLimitSummary);
 practiceMode.addEventListener('change', updateTimeLimitSummary);
@@ -416,5 +508,6 @@ closeDialogButton.addEventListener('click', closeAttemptDialog);
 cancelAttemptButton.addEventListener('click', closeAttemptDialog);
 attemptForm.addEventListener('submit', saveAttempt);
 
+syncCutoffDefaults();
 updateTimeLimitSummary();
 renderAttempts();

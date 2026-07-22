@@ -118,6 +118,10 @@
             <span class="card-label">Worst</span>
             <strong id="worst-value">—</strong>
           </article>
+          <article>
+            <span class="card-label">Cutoff</span>
+            <strong id="cutoff-status">OFF</strong>
+          </article>
         </div>
       </section>
 
@@ -182,9 +186,23 @@
           <input id="time-limit-input" type="text" value="10:00" placeholder="10:00">
         </label>
 
-        <label>
+        <label class="toggle-field">
           <span>Cutoff</span>
-          <input type="text" value="1:00 / Best of 2">
+          <input id="cutoff-enabled" type="checkbox">
+        </label>
+
+        <label>
+          <span>Cutoff Time</span>
+          <input id="cutoff-time-input" type="text" value="1:00" placeholder="1:00">
+        </label>
+
+        <label>
+          <span>Cutoff Attempts</span>
+          <select id="cutoff-attempts-select">
+            <option value="1">Best of 1</option>
+            <option value="2" selected>Best of 2</option>
+            <option value="3">Best of 3</option>
+          </select>
         </label>
 
         <label>
