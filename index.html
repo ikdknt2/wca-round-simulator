@@ -45,8 +45,8 @@
         </article>
         <article class="info-card">
           <span class="card-label">Format</span>
-          <strong>Average of 5</strong>
-          <small>Ao5</small>
+          <strong id="format-summary">Average of 5</strong>
+          <small>Format</small>
         </article>
       </div>
 
@@ -83,10 +83,44 @@
         <div>
           <span class="card-label">Attempt Entry</span>
           <h3>試技記録を追加</h3>
-          <p>Time / Penalty / Commentを入力してAttempt一覧へ保存します。</p>
+          <p>選択中のFormatに合わせてAttempt数と集計結果を管理します。</p>
         </div>
         <button class="primary-button" id="open-attempt-dialog" type="button">試技追加</button>
       </article>
+
+
+
+      <section class="results-card" aria-labelledby="results-title">
+        <div class="section-header compact">
+          <div>
+            <p class="eyebrow">Calculated</p>
+            <h2 id="results-title">集計結果</h2>
+          </div>
+          <span class="attempt-status" id="result-type">AVERAGE</span>
+        </div>
+        <div class="results-grid">
+          <article>
+            <span class="card-label">Attempts</span>
+            <strong id="attempt-progress">0 / 5</strong>
+          </article>
+          <article>
+            <span class="card-label">Mean</span>
+            <strong id="mean-value">—</strong>
+          </article>
+          <article>
+            <span class="card-label">Average</span>
+            <strong id="average-value">—</strong>
+          </article>
+          <article>
+            <span class="card-label">Best</span>
+            <strong id="best-value">—</strong>
+          </article>
+          <article>
+            <span class="card-label">Worst</span>
+            <strong id="worst-value">—</strong>
+          </article>
+        </div>
+      </section>
 
       <section class="attempt-list-card" aria-labelledby="attempt-list-title">
         <div class="section-header compact">
@@ -128,10 +162,14 @@
 
         <label>
           <span>Format</span>
-          <select>
-            <option>Average of 5</option>
-            <option>Mean of 3</option>
+          <select id="format-select">
+            <option>Best of 1</option>
+            <option>Best of 2</option>
             <option>Best of 3</option>
+            <option>Mean of 3</option>
+            <option selected>Average of 5</option>
+            <option>Best of 2 / Average of 5</option>
+            <option>Best of 3 / Mean of 3</option>
           </select>
         </label>
 

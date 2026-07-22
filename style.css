@@ -254,8 +254,33 @@ h3 {
   box-shadow: 0 16px 34px rgba(124, 156, 255, 0.28);
 }
 
+.results-card,
 .attempt-list-card {
   padding: 24px;
+}
+
+.results-card {
+  margin-bottom: 18px;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-md);
+  background: linear-gradient(145deg, var(--surface-soft), var(--surface));
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+.results-grid article {
+  border-radius: var(--radius-sm);
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.results-grid strong {
+  display: block;
+  font-size: 1.3rem;
 }
 
 .attempt-list {
@@ -271,6 +296,10 @@ h3 {
   padding: 16px;
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.04);
+}
+
+.attempt-row.pending {
+  opacity: 0.64;
 }
 
 .attempt-row.current {
@@ -387,6 +416,7 @@ h3 {
 @media (max-width: 880px) {
   .summary-grid,
   .rule-grid,
+  .results-grid,
   .setup-form {
     grid-template-columns: 1fr;
   }
@@ -411,6 +441,10 @@ h3 {
   .hero-card,
   .control-panel {
     padding: 22px;
+  }
+
+  .results-grid {
+    grid-template-columns: 1fr;
   }
 
   .attempt-row {
