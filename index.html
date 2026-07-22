@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WCA Session Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="hero-card" aria-labelledby="app-title">
+      <div>
+        <p class="eyebrow">WCA Session Manager</p>
+        <h1 id="app-title">Session Control</h1>
+        <p class="hero-text">WCAルールに基づくラウンド設定と試技記録を管理するためのセッションマネージャーです。</p>
+      </div>
+      <div class="status-pill" aria-label="Current status">
+        <span class="status-dot"></span>
+        Session Ready
+      </div>
+    </section>
+
+    <section class="control-panel" aria-label="操作画面">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">Always visible</p>
+          <h2>操作画面</h2>
+        </div>
+        <button class="icon-button" type="button" aria-label="More options">•••</button>
+      </div>
+
+      <div class="summary-grid">
+        <article class="info-card">
+          <span class="card-label">Event</span>
+          <strong>3x3x3 Cube</strong>
+          <small>Event名</small>
+        </article>
+        <article class="info-card">
+          <span class="card-label">Round</span>
+          <strong>First Round</strong>
+          <small>Round名</small>
+        </article>
+        <article class="info-card">
+          <span class="card-label">Format</span>
+          <strong id="format-summary">Average of 5</strong>
+          <small>Format</small>
+        </article>
+      </div>
+
+      <div class="rule-grid">
+        <article class="metric-card accent-blue">
+          <div class="card-title-row">
+            <h3>Time Limit</h3>
+            <span>TL</span>
+          </div>
+          <p class="metric-value" id="time-limit-summary">10:00</p>
+          <p class="metric-caption" id="time-limit-caption">Time Limit ON</p>
+        </article>
+
+        <article class="metric-card accent-purple">
+          <div class="card-title-row">
+            <h3>Cumulative</h3>
+            <span>CUM</span>
+          </div>
+          <p class="metric-value">20:00</p>
+          <p class="metric-caption">ラウンド内の累積制限</p>
+        </article>
+
+        <article class="metric-card accent-green">
+          <div class="card-title-row">
+            <h3>Combined Cumulative</h3>
+            <span>GROUP</span>
+          </div>
+          <p class="metric-value">30:00</p>
+          <p class="metric-caption">Combined Group A</p>
+        </article>
+      </div>
+
+      <article class="attempt-card">
+        <div>
+          <span class="card-label">Attempt Entry</span>
+          <h3>試技記録を追加</h3>
+          <p>選択中のFormatに合わせてAttempt数と集計結果を管理します。</p>
+        </div>
+        <button class="primary-button" id="open-attempt-dialog" type="button">試技追加</button>
+      </article>
+
+
+      <section class="results-card" aria-labelledby="results-title">
+        <div class="section-header compact">
+          <div>
+            <p class="eyebrow">Calculated</p>
+            <h2 id="results-title">集計結果</h2>
+          </div>
+          <span class="attempt-status" id="result-type">AVERAGE</span>
+        </div>
+        <div class="results-grid">
+          <article>
+            <span class="card-label">Attempts</span>
+            <strong id="attempt-progress">0 / 5</strong>
+          </article>
+          <article>
+            <span class="card-label">Mean</span>
+            <strong id="mean-value">—</strong>
+          </article>
+          <article>
+            <span class="card-label">Average</span>
+            <strong id="average-value">—</strong>
+          </article>
+          <article>
+            <span class="card-label">Best</span>
+            <strong id="best-value">—</strong>
+          </article>
+          <article>
+            <span class="card-label">Worst</span>
+            <strong id="worst-value">—</strong>
+          </article>
+          <article>
+            <span class="card-label">Cutoff</span>
+            <strong id="cutoff-status">OFF</strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="attempt-list-card" aria-labelledby="attempt-list-title">
+        <div class="section-header compact">
+          <div>
+            <p class="eyebrow">Attempts</p>
+            <h2 id="attempt-list-title">試技一覧</h2>
+          </div>
+        </div>
+
+        <div class="attempt-list" id="attempt-list" aria-live="polite">
+          <p class="empty-state" id="empty-attempts">まだ試技記録はありません。</p>
+        </div>
+      </section>
+    </section>
+
+    <details class="setup-panel">
+      <summary>
+        <span>
+          <span class="eyebrow">Configuration</span>
+          <strong>Setup</strong>
+        </span>
+        <span class="summary-hint">折りたたみ</span>
+      </summary>
+
+      <form class="setup-form" aria-label="Setup form">
+        <label>
+          <span>Event</span>
+          <select>
+            <option>3x3x3 Cube</option>
+            <option>2x2x2 Cube</option>
+            <option>4x4x4 Cube</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Round</span>
+          <input type="text" value="First Round">
+        </label>
+
+        <label>
+          <span>Format</span>
+          <select id="format-select">
+            <option>Best of 1</option>
+            <option>Best of 2</option>
+            <option>Best of 3</option>
+            <option>Mean of 3</option>
+            <option selected>Average of 5</option>
+            <option>Best of 2 / Average of 5</option>
+            <option>Best of 3 / Mean of 3</option>
+          </select>
+        </label>
+
+        <label class="toggle-field">
+          <span>Time Limit</span>
+          <input id="time-limit-enabled" type="checkbox" checked>
+        </label>
+
+        <label>
+          <span>Time Limit Time</span>
+          <input id="time-limit-input" type="text" value="10:00" placeholder="10:00">
+        </label>
+
+        <label class="toggle-field">
+          <span>Cutoff</span>
+          <input id="cutoff-enabled" type="checkbox">
+        </label>
+
+        <label>
+          <span>Cutoff Time</span>
+          <input id="cutoff-time-input" type="text" value="1:00" placeholder="1:00">
+        </label>
+
+        <label>
+          <span>Cutoff Attempts</span>
+          <select id="cutoff-attempts-select">
+            <option value="1">Best of 1</option>
+            <option value="2" selected>Best of 2</option>
+            <option value="3">Best of 3</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Cumulative</span>
+          <input type="text" value="20:00">
+        </label>
+
+        <label>
+          <span>Combined Group</span>
+          <input type="text" value="Group A">
+        </label>
+
+        <label class="toggle-field">
+          <span>Practice Mode</span>
+          <input id="practice-mode" type="checkbox">
+        </label>
+      </form>
+    </details>
+  </main>
+
+  <dialog class="attempt-dialog" id="attempt-dialog" aria-labelledby="attempt-dialog-title">
+    <form class="dialog-card" id="attempt-form" method="dialog">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">Attempt Result</p>
+          <h2 id="attempt-dialog-title">記録入力</h2>
+        </div>
+        <button class="icon-button" id="close-attempt-dialog" type="button" aria-label="閉じる">×</button>
+      </div>
+
+      <label>
+        <span>Time</span>
+        <input id="attempt-time" name="time" type="text" placeholder="12.35 / 1:23.45 / 12:34.56" autocomplete="off" required>
+      </label>
+      <p class="field-help">入力形式を表示に保持し、内部ではミリ秒として保存します。</p>
+
+
+      <label>
+        <span>Penalty</span>
+        <select id="attempt-penalty" name="penalty">
+          <option value="None">None</option>
+          <option value="+2">+2</option>
+          <option value="DNF">DNF</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Comment <small>任意</small></span>
+        <textarea id="attempt-comment" name="comment" rows="3" placeholder="メモを入力"></textarea>
+      </label>
+
+      <p class="form-error" id="form-error" role="alert"></p>
+
+      <div class="dialog-actions">
+        <button class="secondary-button" id="cancel-attempt" type="button">キャンセル</button>
+        <button class="primary-button" type="submit">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="script.js"></script>
+</body>
+</html>
