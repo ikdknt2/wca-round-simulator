@@ -23,7 +23,7 @@ class Rule {
   }
 
   getDefaultCutoffAttempts() {
-    return Math.min(this.format.cutoffAttempts ?? this.format.attempts, this.format.attempts);
+    return Math.min(this.format.cutoffAttempts ?? this.format.attempts, this.format.attempts, 3);
   }
 
   hasDefaultCutoff() {
@@ -219,7 +219,13 @@ function getCutoffTimeMilliseconds() {
 }
 
 function getCutoffAttemptCount() {
-  return Math.min(Number(cutoffAttemptsSelect.value), currentRule.getAttemptCount());
+  const selectedAttempts = Number(cutoffAttemptsSelect.value);
+  const fallbackAttempts = currentRule.getDefaultCutoffAttempts();
+  const cutoffAttempts = Number.isFinite(selectedAttempts) && selectedAttempts > 0
+    ? selectedAttempts
+    : fallbackAttempts;
+
+  return Math.min(cutoffAttempts, currentRule.getAttemptCount(), 3);
 }
 
 function getCutoffState(filledAttempts = attempts.slice(0, currentRule.getAttemptCount())) {
