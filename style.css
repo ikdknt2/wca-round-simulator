@@ -545,3 +545,57 @@ h3 {
     flex-direction: column;
   }
 }
+
+.toggle-field input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--green);
+  justify-self: end;
+}
+
+.time-limit-monitor {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.time-limit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.time-limit-row strong {
+  color: var(--text);
+  font-size: 1.4rem;
+}
+
+.time-limit-bar {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.time-limit-bar span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--green);
+  transition: width 0.2s ease, background-color 0.2s ease;
+}
+
+.time-limit-bar span.warning {
+  background: #f5c84c;
+}
+
+.time-limit-bar span.danger {
+  background: #ff6b6b;
+}

@@ -56,8 +56,8 @@
             <h3>Time Limit</h3>
             <span>TL</span>
           </div>
-          <p class="metric-value">10:00</p>
-          <p class="metric-caption">各試技の制限時間</p>
+          <p class="metric-value" id="time-limit-summary">10:00</p>
+          <p class="metric-caption" id="time-limit-caption">Time Limit ON</p>
         </article>
 
         <article class="metric-card accent-purple">
@@ -87,7 +87,6 @@
         </div>
         <button class="primary-button" id="open-attempt-dialog" type="button">試技追加</button>
       </article>
-
 
 
       <section class="results-card" aria-labelledby="results-title">
@@ -173,9 +172,14 @@
           </select>
         </label>
 
-        <label>
+        <label class="toggle-field">
           <span>Time Limit</span>
-          <input type="text" value="10:00">
+          <input id="time-limit-enabled" type="checkbox" checked>
+        </label>
+
+        <label>
+          <span>Time Limit Time</span>
+          <input id="time-limit-input" type="text" value="10:00" placeholder="10:00">
         </label>
 
         <label>
@@ -195,9 +199,7 @@
 
         <label class="toggle-field">
           <span>Practice Mode</span>
-          <span class="toggle" aria-hidden="true">
-            <span class="toggle-thumb"></span>
-          </span>
+          <input id="practice-mode" type="checkbox">
         </label>
       </form>
     </details>
@@ -218,6 +220,17 @@
         <input id="attempt-time" name="time" type="text" placeholder="12.35 / 1:23.45 / 12:34.56" autocomplete="off" required>
       </label>
       <p class="field-help">入力形式を表示に保持し、内部ではミリ秒として保存します。</p>
+
+      <section class="time-limit-monitor" aria-label="Time Limit monitor">
+        <div class="time-limit-row">
+          <span>残り時間</span>
+          <strong id="remaining-time">10:00.00</strong>
+        </div>
+        <div class="time-limit-bar" aria-hidden="true">
+          <span id="remaining-time-bar"></span>
+        </div>
+        <p class="field-help" id="time-limit-mode-text">Competition Mode: 超過時はDNFで保存されます。</p>
+      </section>
 
       <label>
         <span>Penalty</span>

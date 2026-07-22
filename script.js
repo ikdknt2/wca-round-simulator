@@ -113,9 +113,20 @@ const openDialogButton = document.querySelector('#open-attempt-dialog');
 const closeDialogButton = document.querySelector('#close-attempt-dialog');
 const cancelAttemptButton = document.querySelector('#cancel-attempt');
 
+const timeLimitEnabled = document.querySelector('#time-limit-enabled');
+const timeLimitInput = document.querySelector('#time-limit-input');
+const timeLimitSummary = document.querySelector('#time-limit-summary');
+const timeLimitCaption = document.querySelector('#time-limit-caption');
+const practiceMode = document.querySelector('#practice-mode');
+const remainingTime = document.querySelector('#remaining-time');
+const remainingTimeBar = document.querySelector('#remaining-time-bar');
+const timeLimitModeText = document.querySelector('#time-limit-mode-text');
+
 const timePattern = /^(?:(\d{1,2}):)?(\d{1,2})(?:\.(\d{1,3}))?$/;
 
 let currentRule = new Rule(formatSelect.value);
+let timeLimitTimer = null;
+let timeLimitDeadline = null;
 
 function parseTimeToMilliseconds(timeText) {
   const normalizedTime = timeText.trim();
@@ -155,6 +166,129 @@ function formatMilliseconds(value) {
   return `${minutes > 0 ? `${minutes}:` : ''}${secondsText}.${String(centiseconds).padStart(2, '0')}`;
 }
 
+
+function getTimeLimitMilliseconds() {
+  if (!timeLimitEnabled.checked) {
+    return null;
+  }
+
+  return parseTimeToMilliseconds(timeLimitInput.value);
+}
+
+function getTimeLimitText() {
+  const limitMs = getTimeLimitMilliseconds();
+  return limitMs === null ? 'OFF' : formatMilliseconds(limitMs);
+}
+
+function getBarClassName(percentRemaining) {
+  if (percentRemaining < 20) {
+    return 'danger';
+  }
+
+  if (percentRemaining < 50) {
+    return 'warning';
+  }
+
+  return '';
+}
+
+function updateTimeLimitSummary() {
+  const limitMs = getTimeLimitMilliseconds();
+  const isCompetitionMode = !practiceMode.checked;
+
+  timeLimitSummary.textContent = getTimeLimitText();
+  timeLimitCaption.textContent = limitMs === null
+    ? 'Time Limit OFF'
+    : `${isCompetitionMode ? 'Competition' : 'Practice'} Mode`;
+  timeLimitModeText.textContent = isCompetitionMode
+    ? 'Competition Mode: 超過時はDNFで保存されます。'
+    : 'Practice Mode: 超過時も保存し、Warningを表示します。';
+
+  updateRemainingTime(limitMs, limitMs);
+}
+
+function updateRemainingTime(remainingMs, limitMs) {
+  const safeLimitMs = limitMs ?? 0;
+  const safeRemainingMs = Math.max(remainingMs ?? 0, 0);
+  const percentRemaining = safeLimitMs > 0 ? (safeRemainingMs / safeLimitMs) * 100 : 0;
+
+  remainingTime.textContent = safeLimitMs > 0 ? formatMilliseconds(safeRemainingMs) : 'OFF';
+  remainingTimeBar.style.width = `${Math.max(0, Math.min(100, percentRemaining))}%`;
+  remainingTimeBar.className = getBarClassName(percentRemaining);
+}
+
+function stopTimeLimitCountdown() {
+  if (timeLimitTimer !== null) {
+    clearInterval(timeLimitTimer);
+    timeLimitTimer = null;
+  }
+
+  timeLimitDeadline = null;
+}
+
+function startTimeLimitCountdown() {
+  stopTimeLimitCountdown();
+
+  const limitMs = getTimeLimitMilliseconds();
+  if (limitMs === null) {
+    updateRemainingTime(null, null);
+    return;
+  }
+
+  timeLimitDeadline = Date.now() + limitMs;
+  updateRemainingTime(limitMs, limitMs);
+
+  timeLimitTimer = setInterval(() => {
+    const remainingMs = timeLimitDeadline - Date.now();
+    updateRemainingTime(remainingMs, limitMs);
+
+    if (remainingMs <= 0) {
+      saveAutomaticDnf(limitMs);
+    }
+  }, 100);
+}
+
+function saveAutomaticDnf(limitMs) {
+  stopTimeLimitCountdown();
+
+  if (!attemptDialog.open) {
+    return;
+  }
+
+  attempts.push({
+    timeText: formatMilliseconds(limitMs),
+    timeMs: limitMs,
+    penalty: 'DNF',
+    comment: 'Time Limit exceeded: auto DNF',
+    warning: '',
+  });
+
+  renderAttempts();
+  closeAttemptDialog();
+}
+
+function applyTimeLimitToAttempt(attempt) {
+  const limitMs = getTimeLimitMilliseconds();
+
+  if (limitMs === null || attempt.timeMs <= limitMs) {
+    return attempt;
+  }
+
+  if (practiceMode.checked) {
+    return {
+      ...attempt,
+      warning: 'Warning: Time Limitを超過しています。',
+    };
+  }
+
+  return {
+    ...attempt,
+    penalty: 'DNF',
+    warning: '',
+    comment: attempt.comment || 'Time Limit exceeded',
+  };
+}
+
 function getAttemptDisplay(attempt) {
   if (!attempt) {
     return 'Pending';
@@ -167,7 +301,7 @@ function renderAttempts() {
   const attemptCount = currentRule.getAttemptCount();
   const filledAttempts = attempts.slice(0, attemptCount);
 
-  emptyAttempts.hidden = filledAttempts.length > 0;
+  emptyAttempts.hidden = true;
   attemptList.querySelectorAll('.attempt-row').forEach((row) => row.remove());
 
   const rows = Array.from({ length: attemptCount }, (_, index) => {
@@ -194,7 +328,7 @@ function renderAttempts() {
 
     const comment = document.createElement('span');
     comment.className = 'attempt-comment';
-    comment.textContent = attempt?.comment || 'No comment';
+    comment.textContent = [attempt?.comment || 'No comment', attempt?.warning].filter(Boolean).join(' / ');
 
     row.append(number, name, penalty, comment);
     return row;
@@ -226,11 +360,14 @@ function openAttemptDialog() {
   formError.textContent = '';
   attemptForm.reset();
   attemptDialog.showModal();
+  startTimeLimitCountdown();
   document.querySelector('#attempt-time').focus();
 }
 
 function closeAttemptDialog() {
+  stopTimeLimitCountdown();
   attemptDialog.close();
+  updateTimeLimitSummary();
 }
 
 function saveAttempt(event) {
@@ -250,12 +387,15 @@ function saveAttempt(event) {
     return;
   }
 
-  attempts.push({
+  const attempt = applyTimeLimitToAttempt({
     timeText,
     timeMs,
     penalty: String(formData.get('penalty')),
     comment: String(formData.get('comment') ?? '').trim(),
+    warning: '',
   });
+
+  attempts.push(attempt);
 
   renderAttempts();
   closeAttemptDialog();
@@ -268,9 +408,13 @@ function changeFormat() {
 }
 
 formatSelect.addEventListener('change', changeFormat);
+timeLimitEnabled.addEventListener('change', updateTimeLimitSummary);
+timeLimitInput.addEventListener('input', updateTimeLimitSummary);
+practiceMode.addEventListener('change', updateTimeLimitSummary);
 openDialogButton.addEventListener('click', openAttemptDialog);
 closeDialogButton.addEventListener('click', closeAttemptDialog);
 cancelAttemptButton.addEventListener('click', closeAttemptDialog);
 attemptForm.addEventListener('submit', saveAttempt);
 
+updateTimeLimitSummary();
 renderAttempts();
