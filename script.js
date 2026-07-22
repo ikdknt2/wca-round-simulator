@@ -325,7 +325,7 @@ function renderAttempts() {
   });
 
   attemptList.append(...rows);
-  renderSummary(filledAttempts);
+  renderSummary(filledAttempts.slice(0, allowedAttemptCount));
 }
 
 function renderSummary(filledAttempts) {
