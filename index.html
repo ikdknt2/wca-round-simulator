@@ -1,0 +1,2247 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>WCA Session Manager & Timer</title>
+  <style>
+    /* ==========================================================================
+       1. デザインシステム & 基本スタイル (Google Material Design ダークテーマ風)
+       ========================================================================== */
+    :root {
+      --bg-color: #121212;
+      --surface-color: #1e1e1e;
+      --surface-variant: #2d2d2d;
+      --primary-color: #bb86fc;
+      --primary-variant: #3700b3;
+      --secondary-color: #03dac6;
+      --error-color: #cf6679;
+      --text-main: #e1e1e1;
+      --text-muted: #a0a0a0;
+      
+      --status-green: #4caf50;
+      --status-yellow: #ffeb3b;
+      --status-red: #f44336;
+
+      --radius-sm: 8px;
+      --radius-md: 16px;
+      --radius-lg: 24px;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none; /* タイマー操作時のテキスト選択防止 */
+      -webkit-user-select: none;
+      touch-action: manipulation; /* ダブルタップズーム防止 */
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Card Layout */
+    .card {
+      background-color: var(--surface-color);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+
+    /* Status Alert Banner */
+    .status-banner {
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      font-weight: bold;
+      text-align: center;
+      display: none;
+      margin-bottom: 15px;
+    }
+
+    .status-banner.danger {
+      background-color: rgba(244, 67, 54, 0.2);
+      border: 1px solid var(--status-red);
+      color: #ff8a80;
+      display: block;
+    }
+
+    .status-banner.success {
+      background-color: rgba(76, 175, 80, 0.2);
+      border: 1px solid var(--status-green);
+      color: #b9f6ca;
+      display: block;
+    }
+
+    /* Buttons */
+    .btn {
+      background-color: var(--surface-variant);
+      color: var(--text-main);
+      border: none;
+      padding: 10px 18px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: background-color 0.2s, transform 0.1s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn:hover {
+      background-color: #3d3d3d;
+    }
+
+    .btn:active {
+      transform: scale(0.96);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+    }
+
+    .btn-primary {
+      background-color: var(--primary-color);
+      color: #000;
+    }
+    .btn-primary:hover {
+      background-color: #a370e6;
+    }
+
+    .btn-danger {
+      background-color: var(--error-color);
+      color: #000;
+    }
+
+    /* Multi-Session Selection UI */
+    .session-selector-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: var(--surface-variant);
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 12px;
+    }
+
+    .session-tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .session-tab {
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid #444;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .session-tab.active {
+      background: var(--primary-color);
+      color: #000;
+      font-weight: bold;
+      border-color: var(--primary-color);
+    }
+
+    .session-tab-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    /* Toggle Mode Selector */
+    .mode-toggle-group {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+
+    .mode-toggle-container {
+      display: flex;
+      background: var(--surface-variant);
+      border-radius: 20px;
+      padding: 3px;
+      gap: 4px;
+    }
+
+    .mode-toggle-btn {
+      padding: 8px 18px;
+      border-radius: 16px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      transition: all 0.2s;
+    }
+
+    .mode-toggle-btn.active {
+      background: var(--primary-color);
+      color: #000;
+    }
+
+    /* Modal inputs */
+    input[type="text"], input[type="number"], select {
+      background-color: var(--surface-variant);
+      color: var(--text-main);
+      border: 1px solid #444;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 1rem; /* スマホでの自動ズーム防止用に16px(1rem)以上に設定 */
+      width: 100%;
+      outline: none;
+    }
+
+    input[type="text"]:focus, select:focus {
+      border-color: var(--primary-color);
+    }
+
+    /* ==========================================================================
+       2. メインタイマーエリア UI & オンスクリーンキーパッド
+       ========================================================================== */
+    .header-info {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .header-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary-color);
+    }
+
+    .header-sub {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Progress & Time Limit Display */
+    .limits-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 12px 0;
+      background: var(--surface-variant);
+      padding: 12px;
+      border-radius: var(--radius-sm);
+    }
+
+    .limit-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .limit-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 10px;
+      background-color: #121212;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 100%;
+      background-color: var(--status-green);
+      transition: width 0.3s ease, background-color 0.3s ease;
+    }
+
+    /* Timer Display / Start Button */
+    .timer-display-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      background: #181818;
+      border: 2px solid var(--surface-variant);
+      border-radius: var(--radius-lg);
+      margin: 8px 0;
+      min-height: 170px;
+      cursor: pointer; /* タッチ反応用 */
+    }
+
+    .timer-text {
+      font-size: 4rem;
+      font-weight: 700;
+      font-family: monospace;
+      letter-spacing: -2px;
+      margin-bottom: 12px;
+    }
+
+    .start-btn {
+      width: 85%;
+      max-width: 320px;
+      height: 60px;
+      font-size: 1.4rem;
+      border-radius: 30px;
+      box-shadow: 0 4px 15px rgba(187, 134, 252, 0.3);
+    }
+
+    /* スマホ用 バーチャルテンキー (Numpad) */
+    .numpad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      width: 100%;
+      max-width: 320px;
+      margin-top: 12px;
+    }
+
+    .num-btn {
+      background-color: var(--surface-variant);
+      color: var(--text-main);
+      border: 1px solid #444;
+      border-radius: var(--radius-sm);
+      font-size: 1.4rem;
+      font-weight: bold;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background-color 0.1s, transform 0.1s;
+    }
+
+    .num-btn:active {
+      background-color: var(--primary-color);
+      color: #000;
+      transform: scale(0.95);
+    }
+
+    .num-btn.btn-action {
+      font-size: 1rem;
+      background-color: #383838;
+    }
+
+    .num-btn.btn-enter {
+      grid-column: span 3;
+      background-color: var(--primary-color);
+      color: #000;
+      height: 56px;
+      font-size: 1.2rem;
+    }
+
+    .limit-reached-banner {
+      background-color: rgba(244, 67, 54, 0.25);
+      border: 1px solid var(--status-red);
+      color: #ff8a80;
+      padding: 12px 20px;
+      border-radius: var(--radius-sm);
+      font-weight: bold;
+      font-size: 0.9rem;
+      text-align: center;
+      margin-top: 10px;
+      width: 90%;
+      max-width: 350px;
+      display: none;
+    }
+
+    /* Attempts Table & Stats */
+    .attempts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .attempt-card {
+      background: var(--surface-variant);
+      padding: 8px;
+      border-radius: var(--radius-sm);
+      text-align: center;
+    }
+
+    .attempt-card.active {
+      border: 1px solid var(--primary-color);
+    }
+
+    .attempt-card .num {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .attempt-card .val {
+      font-size: 1rem;
+      font-weight: bold;
+      margin-top: 2px;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--surface-variant);
+      font-size: 0.9rem;
+    }
+
+    .stats-item span {
+      color: var(--primary-color);
+      font-weight: bold;
+    }
+
+    /* Session Action Bar */
+    .session-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* ==========================================================================
+       3. 設定エリア (Setup - Collapsible)
+       ========================================================================== */
+    .setup-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      padding: 4px 0;
+    }
+
+    .setup-header h2 {
+      font-size: 1.1rem;
+    }
+
+    .setup-content {
+      display: none; /* デフォルト折りたたみ */
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .setup-content.open {
+      display: flex;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .checkbox-group input {
+      width: auto;
+      transform: scale(1.2);
+    }
+
+    /* Presets */
+    .preset-bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: var(--surface-variant);
+      padding: 10px;
+      border-radius: var(--radius-sm);
+    }
+
+    .combined-group-settings {
+      border: 1px solid #333;
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      background: rgba(0,0,0,0.2);
+    }
+
+    .combined-group-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #333;
+    }
+    .combined-group-card:last-child {
+      border-bottom: none;
+    }
+
+    /* ==========================================================================
+       4. モーダルダイアログ UI (結果入力・記録)
+       ========================================================================== */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--surface-color);
+      width: 100%;
+      max-width: 400px;
+      border-radius: var(--radius-md);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    }
+
+    .modal h3 {
+      text-align: center;
+      color: var(--primary-color);
+    }
+
+    .modal-notice {
+      background: rgba(244, 67, 54, 0.15);
+      border: 1px solid var(--status-red);
+      color: #ff8a80;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      text-align: center;
+      display: none;
+    }
+
+    .modal-notice.active {
+      display: block;
+    }
+
+    .penalty-selector {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .penalty-btn {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #444;
+      background: var(--surface-variant);
+      color: var(--text-main);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .penalty-btn.selected {
+      background: var(--primary-color);
+      color: #000;
+    }
+
+    /* ==========================================================================
+       5. セッション履歴 モーダル
+       ========================================================================== */
+    .history-list {
+      max-height: 250px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .history-item {
+      background: var(--surface-variant);
+      padding: 10px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr; }
+      .timer-text { font-size: 3.2rem; }
+      .start-btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- ==========================================================================
+       上部：操作・表示画面 (メイン)
+       ========================================================================== -->
+  <div class="card">
+    
+    <!-- Sessions 一覧 & 管理エリア -->
+    <div class="session-selector-bar">
+      <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: bold;">SESSIONS</div>
+      <div class="session-tabs" id="session-tabs-container">
+        <!-- JSで動的描画 -->
+      </div>
+      <div class="session-tab-actions">
+        <button class="btn btn-sm btn-primary" id="btn-add-session">＋ New Session</button>
+        <button class="btn btn-sm" id="btn-rename-session">✏️ Rename</button>
+        <button class="btn btn-sm" id="btn-dup-session">📋 Duplicate</button>
+        <button class="btn btn-sm btn-danger" id="btn-del-session">🗑️ Delete</button>
+      </div>
+    </div>
+
+    <!-- イベント・ラウンド情報 -->
+    <div class="header-info">
+      <div class="header-title" id="disp-event-round">3x3x3 - Round 1</div>
+      <div class="header-sub" id="disp-format">Average of 5</div>
+    </div>
+
+    <!-- モード切り替えトグル (Timer / Manual Input) -->
+    <div class="mode-toggle-group">
+      <div class="mode-toggle-container">
+        <button class="mode-toggle-btn active" id="btn-mode-timer">⏱ Timer</button>
+        <button class="mode-toggle-btn" id="btn-mode-manual">⌨️ Manual Input</button>
+      </div>
+    </div>
+
+    <!-- 状況アナウンスバナー（Cutoffクリア/不通過、Cumulative制限オーバーなど） -->
+    <div class="status-banner" id="status-banner"></div>
+
+    <!-- 制限時間 & 累積時間 バー表示 -->
+    <div class="limits-container">
+      <!-- 単発 Time Limit -->
+      <div class="limit-item" id="time-limit-box" style="display: none;">
+        <div class="limit-label-row">
+          <span>Time Limit</span>
+          <span id="disp-tl-text">-- / --</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="bar-tl"></div>
+        </div>
+      </div>
+
+      <!-- 単体 Cumulative Time Limit -->
+      <div class="limit-item" id="cum-limit-box" style="display: none;">
+        <div class="limit-label-row">
+          <span id="disp-cum-label">Cumulative Limit</span>
+          <span id="disp-cum-text">-- / --</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="bar-cum"></div>
+        </div>
+      </div>
+
+      <!-- Combined Cumulative Limit (複数セッション共通の累積時間) -->
+      <div class="limit-item" id="combined-cum-limit-box" style="display: none;">
+        <div class="limit-label-row">
+          <span id="disp-comb-cum-label">Combined Cumulative Limit (Group A)</span>
+          <span id="disp-comb-cum-text">-- / --</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="bar-comb-cum"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- タイマー本体 / 手入力エリア -->
+    <div class="timer-display-card" id="timer-touch-area">
+      <div class="timer-text" id="timer-display">0.00</div>
+      
+      <!-- Timer Mode Start Button -->
+      <button class="btn btn-primary start-btn" id="btn-start">START</button>
+      
+      <!-- Manual Input (スマホ用オンスクリーンキーパッド) -->
+      <div id="manual-controls" style="display: none; flex-direction: column; align-items: center; width: 100%;">
+        <div class="numpad-grid">
+          <button class="num-btn" data-key="1">1</button>
+          <button class="num-btn" data-key="2">2</button>
+          <button class="num-btn" data-key="3">3</button>
+          <button class="num-btn" data-key="4">4</button>
+          <button class="num-btn" data-key="5">5</button>
+          <button class="num-btn" data-key="6">6</button>
+          <button class="num-btn" data-key="7">7</button>
+          <button class="num-btn" data-key="8">8</button>
+          <button class="num-btn" data-key="9">9</button>
+          <button class="num-btn btn-action" data-key="clear">C</button>
+          <button class="num-btn" data-key="0">0</button>
+          <button class="num-btn btn-action" data-key="backspace">⌫</button>
+          <button class="num-btn btn-enter" id="btn-manual-submit">確定 (Enter)</button>
+        </div>
+      </div>
+
+      <!-- 累積時間オーバー時の警告パネル -->
+      <div class="limit-reached-banner" id="limit-reached-msg">
+        ⛔ 累積制限時間(Cumulative Limit)を超過したため、次の試技に進めません
+      </div>
+    </div>
+
+    <!-- Attempt (試技) 一覧 -->
+    <div class="attempts-grid" id="attempts-container">
+      <!-- JavaScriptで動的生成 -->
+    </div>
+
+    <!-- 成績計算結果 (Average / Mean / Best) -->
+    <div class="stats-row">
+      <div class="stats-item">Best: <span id="stat-best">--</span></div>
+      <div class="stats-item">Mean: <span id="stat-mean">--</span></div>
+      <div class="stats-item">Avg: <span id="stat-avg">--</span></div>
+    </div>
+
+    <!-- セッション操作バー -->
+    <div class="session-actions">
+      <button class="btn btn-sm" id="btn-undo">Undo</button>
+      <button class="btn btn-sm" id="btn-reset">Reset</button>
+      <button class="btn btn-sm btn-primary" id="btn-new-session">Clear Attempts</button>
+      <button class="btn btn-sm" id="btn-history">History</button>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       下部：Setup (設定) エリア - 折りたたみ可能
+       ========================================================================== -->
+  <div class="card">
+    <div class="setup-header" id="setup-toggle-header">
+      <h2>⚙️ Setup (大会・練習設定)</h2>
+      <span id="setup-arrow">▼</span>
+    </div>
+
+    <div class="setup-content" id="setup-content-body">
+      
+      <!-- プリセット選択 -->
+      <div class="preset-bar">
+        <label style="font-size: 0.85rem; color: var(--text-muted);">Preset:</label>
+        <select id="preset-select" style="flex:1;">
+          <!-- JSで登録 -->
+        </select>
+        <button class="btn btn-sm" id="btn-save-preset">Save Preset</button>
+      </div>
+
+      <!-- Event & Round Name -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>Event</label>
+          <select id="cfg-event">
+            <option value="222">2x2x2</option>
+            <option value="333" selected>3x3x3</option>
+            <option value="444">4x4x4</option>
+            <option value="555">5x5x5</option>
+            <option value="666">6x6x6</option>
+            <option value="777">7x7x7</option>
+            <option value="clock">Clock</option>
+            <option value="minx">Megaminx</option>
+            <option value="pyram">Pyraminx</option>
+            <option value="skewb">Skewb</option>
+            <option value="sq1">Square-1</option>
+            <option value="333bf">3x3 Blindfolded</option>
+            <option value="444bf">4x4 Blindfolded</option>
+            <option value="555bf">5x5 Blindfolded</option>
+            <option value="333mbf">Multiple Blindfolded</option>
+            <option value="333fm">3x3 Fewest Moves</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Round Name</label>
+          <input type="text" id="cfg-round-name" value="Round 1" placeholder="例: Round 1, Final, Practice">
+        </div>
+      </div>
+
+      <!-- Format -->
+      <div class="form-group">
+        <label>Format</label>
+        <select id="cfg-format">
+          <option value="bo1">Best of 1</option>
+          <option value="bo2">Best of 2</option>
+          <option value="bo3">Best of 3</option>
+          <option value="mo3">Mean of 3</option>
+          <option value="ao5" selected>Average of 5</option>
+        </select>
+      </div>
+
+      <!-- Practice Mode -->
+      <div class="form-group">
+        <label class="checkbox-group">
+          <input type="checkbox" id="cfg-practice-mode">
+          <span>Practice Mode (制限時間を超えても計測を無効化しない)</span>
+        </label>
+      </div>
+
+      <!-- Time Limit -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="checkbox-group">
+            <input type="checkbox" id="cfg-tl-enable">
+            <span>Time Limit ON</span>
+          </label>
+        </div>
+        <div class="form-group">
+          <label>Limit (秒)</label>
+          <input type="number" id="cfg-tl-seconds" value="60" min="1">
+        </div>
+      </div>
+
+      <!-- Cutoff (Ao5ならBest of 2 / Mo3ならBest of 1が適用) -->
+      <div class="form-row" id="cutoff-setup-row">
+        <div class="form-group">
+          <label class="checkbox-group">
+            <input type="checkbox" id="cfg-cutoff-enable">
+            <span id="cfg-cutoff-label">Cutoff ON</span>
+          </label>
+        </div>
+        <div class="form-group">
+          <label>Cutoff Time (秒)</label>
+          <input type="number" id="cfg-cutoff-seconds" value="30" min="1">
+        </div>
+      </div>
+
+      <!-- Cumulative Time Limit (Session単体) -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="checkbox-group">
+            <input type="checkbox" id="cfg-cum-enable">
+            <span>Cumulative Limit ON (単体)</span>
+          </label>
+        </div>
+        <div class="form-group">
+          <label>Cumulative Limit (秒)</label>
+          <input type="number" id="cfg-cum-seconds" value="600" min="1">
+        </div>
+      </div>
+
+      <!-- Combined Group Selection for Current Session -->
+      <div class="form-group">
+        <label>Combined Cumulative Group (所属グループ)</label>
+        <select id="cfg-cum-group">
+          <option value="none">なし (None)</option>
+          <option value="Group A">Group A</option>
+          <option value="Group B">Group B</option>
+          <option value="Group C">Group C</option>
+          <option value="Group D">Group D</option>
+        </select>
+      </div>
+
+      <!-- Combined Groups Master Configuration (Group A~D 全体の制限管理) -->
+      <div class="form-group">
+        <label>Combined Groups Configuration (グループ全体設定)</label>
+        <div class="combined-group-settings">
+          
+          <!-- Group A -->
+          <div class="combined-group-card">
+            <label class="checkbox-group">
+              <input type="checkbox" id="cfg-grp-a-enable">
+              <span>Group A</span>
+            </label>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:0.8rem; color:var(--text-muted)">Limit (秒):</span>
+              <input type="number" id="cfg-grp-a-seconds" value="3600" min="1" style="width:90px;">
+            </div>
+          </div>
+
+          <!-- Group B -->
+          <div class="combined-group-card">
+            <label class="checkbox-group">
+              <input type="checkbox" id="cfg-grp-b-enable">
+              <span>Group B</span>
+            </label>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:0.8rem; color:var(--text-muted)">Limit (秒):</span>
+              <input type="number" id="cfg-grp-b-seconds" value="3600" min="1" style="width:90px;">
+            </div>
+          </div>
+
+          <!-- Group C -->
+          <div class="combined-group-card">
+            <label class="checkbox-group">
+              <input type="checkbox" id="cfg-grp-c-enable">
+              <span>Group C</span>
+            </label>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:0.8rem; color:var(--text-muted)">Limit (秒):</span>
+              <input type="number" id="cfg-grp-c-seconds" value="3600" min="1" style="width:90px;">
+            </div>
+          </div>
+
+          <!-- Group D -->
+          <div class="combined-group-card">
+            <label class="checkbox-group">
+              <input type="checkbox" id="cfg-grp-d-enable">
+              <span>Group D</span>
+            </label>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:0.8rem; color:var(--text-muted)">Limit (秒):</span>
+              <input type="number" id="cfg-grp-d-seconds" value="3600" min="1" style="width:90px;">
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- ==========================================================================
+     モーダル 1: タイマー停止後の結果ペナルティ入力
+     ========================================================================== -->
+<div class="modal-overlay" id="modal-result">
+  <div class="modal">
+    <h3>試技結果登録</h3>
+    <div style="text-align: center; font-size: 2.2rem; font-family: monospace;" id="modal-raw-time">0:00.00</div>
+    
+    <!-- 自動DNF適用通知（単発制限/累積制限超過時） -->
+    <div class="modal-notice" id="modal-notice-tl">
+      ⚠️ 制限時間を超過したため、自動的に DNF となりました。
+    </div>
+
+    <div class="form-group">
+      <label>ペナルティ (Penalty)</label>
+      <div class="penalty-selector">
+        <div class="penalty-btn selected" data-penalty="0">None</div>
+        <div class="penalty-btn" data-penalty="2000">+2</div>
+        <div class="penalty-btn" data-penalty="-1">DNF</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>コメント (任意)</label>
+      <input type="text" id="modal-comment" placeholder="POPした, 緊張など">
+    </div>
+
+    <button class="btn btn-primary" id="btn-save-result" style="width: 100%; height: 48px;">保存 (Save)</button>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     モーダル 2: 過去セッション履歴
+     ========================================================================== -->
+<div class="modal-overlay" id="modal-history">
+  <div class="modal" style="max-width: 500px;">
+    <h3>Session History</h3>
+    <div class="history-list" id="history-container">
+      <!-- JSで挿入 -->
+    </div>
+    <button class="btn" id="btnCloseHistory" style="width:100%;">閉じる</button>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     JavaScript (ロジック実装)
+     ========================================================================== -->
+<script>
+/**
+ * ============================================================================
+ * WCA Multi-Session Manager & Timer
+ * ============================================================================
+ */
+
+/* ----------------------------------------------------------------------------
+ * 1. ユーティリティ関数群 (時間フォーマット等)
+ * ---------------------------------------------------------------------------- */
+const Utils = {
+  formatTime(ms) {
+    if (ms === -1) return "DNF";
+    if (ms === null || ms === undefined) return "--";
+
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const milliseconds = Math.floor((ms % 1000) / 10);
+
+    const msStr = milliseconds.toString().padStart(2, '0');
+
+    if (minutes > 0) {
+      const secStr = seconds.toString().padStart(2, '0');
+      return `${minutes}:${secStr}.${msStr}`;
+    }
+    return `${seconds}.${msStr}`;
+  },
+
+  parseManualInput(digits) {
+    if (!digits || digits.length === 0) {
+      return { ms: 0, text: "0.00" };
+    }
+
+    const cleanDigits = digits.replace(/^0+/, '');
+    if (cleanDigits.length === 0) {
+      return { ms: 0, text: "0.00" };
+    }
+
+    let minutes = 0;
+    let seconds = 0;
+    let msDigits = 0;
+
+    if (cleanDigits.length <= 2) {
+      msDigits = parseInt(cleanDigits, 10);
+    } else if (cleanDigits.length <= 4) {
+      msDigits = parseInt(cleanDigits.slice(-2), 10);
+      seconds = parseInt(cleanDigits.slice(0, -2), 10);
+    } else {
+      msDigits = parseInt(cleanDigits.slice(-2), 10);
+      seconds = parseInt(cleanDigits.slice(-4, -2), 10);
+      minutes = parseInt(cleanDigits.slice(0, -4), 10);
+    }
+
+    const totalMs = (minutes * 60 + seconds) * 1000 + msDigits * 10;
+    const text = this.formatTime(totalMs);
+
+    return { ms: totalMs, text };
+  },
+
+  nowString() {
+    const d = new Date();
+    return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+  }
+};
+
+/* ----------------------------------------------------------------------------
+ * 2. CombinedGroupManager クラス
+ * ---------------------------------------------------------------------------- */
+class CombinedGroupManager {
+  constructor() {
+    this.groups = this.loadGroupConfigs();
+  }
+
+  getDefaultGroups() {
+    return {
+      "Group A": { enabled: true, seconds: 3600 },
+      "Group B": { enabled: false, seconds: 3600 },
+      "Group C": { enabled: false, seconds: 3600 },
+      "Group D": { enabled: false, seconds: 3600 }
+    };
+  }
+
+  loadGroupConfigs() {
+    const data = localStorage.getItem('wca_combined_groups');
+    return data ? JSON.parse(data) : this.getDefaultGroups();
+  }
+
+  saveGroupConfigs() {
+    localStorage.setItem('wca_combined_groups', JSON.stringify(this.groups));
+  }
+
+  getGroupConfig(groupName) {
+    return this.groups[groupName] || { enabled: false, seconds: 0 };
+  }
+
+  setGroupConfig(groupName, enabled, seconds) {
+    if (this.groups[groupName]) {
+      this.groups[groupName].enabled = enabled;
+      this.groups[groupName].seconds = seconds;
+      this.saveGroupConfigs();
+    }
+  }
+
+  getUsedTimeForGroup(groupName, sessions) {
+    if (!groupName || groupName === 'none') return 0;
+    let totalMs = 0;
+    sessions.forEach(session => {
+      if (session.config.cumGroup === groupName) {
+        session.attempts.forEach(a => {
+          totalMs += (a.time || 0);
+        });
+      }
+    });
+    return totalMs;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+ * 3. RuleEngine クラス
+ * ---------------------------------------------------------------------------- */
+class RuleEngine {
+  static getEffectiveTime(attempt) {
+    if (!attempt || attempt.penalty === -1) return -1;
+    return attempt.time + (attempt.penalty || 0);
+  }
+
+  static calculateBest(attempts) {
+    const validTimes = attempts
+      .map(a => this.getEffectiveTime(a))
+      .filter(t => t > 0);
+    if (validTimes.length === 0) return -1;
+    return Math.min(...validTimes);
+  }
+
+  static calculateMean(attempts) {
+    if (attempts.length === 0) return null;
+    let sum = 0;
+    for (let a of attempts) {
+      const t = this.getEffectiveTime(a);
+      if (t === -1) return -1;
+      sum += t;
+    }
+    return Math.round(sum / attempts.length);
+  }
+
+  static calculateAo5(attempts) {
+    if (attempts.length < 5) return null;
+    const times = attempts.slice(0, 5).map(a => this.getEffectiveTime(a));
+    
+    const dnfCount = times.filter(t => t === -1).length;
+    if (dnfCount >= 2) return -1;
+
+    const sorted = [...times].sort((a, b) => {
+      if (a === -1) return 1;
+      if (b === -1) return -1;
+      return a - b;
+    });
+
+    const middle3 = sorted.slice(1, 4);
+    const sum = middle3.reduce((acc, cur) => acc + cur, 0);
+    return Math.round(sum / 3);
+  }
+
+  static getMaxAttempts(format) {
+    switch (format) {
+      case 'bo1': return 1;
+      case 'bo2': return 2;
+      case 'bo3': return 3;
+      case 'mo3': return 3;
+      case 'ao5': return 5;
+      default: return 5;
+    }
+  }
+
+  static checkCutoff(attempts, config) {
+    if (!config.cutoffEnable) return { passed: true, evaluated: false };
+    
+    let cutoffAttemptsCount = 0;
+    if (config.format === 'ao5') cutoffAttemptsCount = 2; 
+    if (config.format === 'mo3') cutoffAttemptsCount = 1; 
+
+    if (cutoffAttemptsCount === 0) return { passed: true, evaluated: false };
+
+    if (attempts.length === cutoffAttemptsCount) {
+      const bestInCutoff = this.calculateBest(attempts);
+      const limitMs = config.cutoffSeconds * 1000;
+      
+      if (bestInCutoff !== -1 && bestInCutoff < limitMs) {
+        return { passed: true, evaluated: true, bestTime: bestInCutoff };
+      } else {
+        return { passed: false, evaluated: true, bestTime: bestInCutoff };
+      }
+    }
+    return { passed: true, evaluated: false };
+  }
+}
+
+/* ----------------------------------------------------------------------------
+ * 4. TimerEngine クラス
+ * ---------------------------------------------------------------------------- */
+class TimerEngine {
+  constructor(onTick) {
+    this.startTime = 0;
+    this.elapsedTime = 0;
+    this.timerInterval = null;
+    this.isRunning = false;
+    this.onTick = onTick;
+  }
+
+  start() {
+    if (this.isRunning) return;
+    this.isRunning = true;
+    this.startTime = performance.now();
+    this.timerInterval = requestAnimationFrame(this._update.bind(this));
+  }
+
+  stop() {
+    if (!this.isRunning) return 0;
+    this.isRunning = false;
+    cancelAnimationFrame(this.timerInterval);
+    const finalTime = Math.round(performance.now() - this.startTime);
+    return finalTime;
+  }
+
+  _update() {
+    if (!this.isRunning) return;
+    this.elapsedTime = Math.round(performance.now() - this.startTime);
+    if (this.onTick) this.onTick(this.elapsedTime);
+    this.timerInterval = requestAnimationFrame(this._update.bind(this));
+  }
+}
+
+/* ----------------------------------------------------------------------------
+ * 5. SessionManager クラス
+ * ---------------------------------------------------------------------------- */
+class SessionManager {
+  constructor() {
+    this.sessions = this.loadSessions();
+    this.activeSessionId = this.loadActiveSessionId();
+
+    if (this.sessions.length === 0) {
+      const defaultSess = this._createDefaultSession('3BLD Practice', '333bf');
+      this.sessions.push(defaultSess);
+      this.activeSessionId = defaultSess.id;
+      this.saveAll();
+    } else if (!this.sessions.find(s => s.id === this.activeSessionId)) {
+      this.activeSessionId = this.sessions[0].id;
+    }
+  }
+
+  _createDefaultSession(name = 'New Session', event = '333') {
+    return {
+      id: Date.now() + "_" + Math.random().toString(36).substr(2, 4),
+      name: name,
+      date: Utils.nowString(),
+      config: {
+        event: event,
+        roundName: 'Round 1',
+        format: 'ao5',
+        practiceMode: false,
+        timeLimitEnable: false,
+        timeLimitSeconds: 60,
+        cutoffEnable: false,
+        cutoffSeconds: 30,
+        cumEnable: false,
+        cumSeconds: 600,
+        cumGroup: 'none'
+      },
+      attempts: [],
+      isCutoffFailed: false,
+      isCutoffPassed: false
+    };
+  }
+
+  getCurrentSession() {
+    return this.sessions.find(s => s.id === this.activeSessionId) || this.sessions[0];
+  }
+
+  setActiveSession(id) {
+    if (this.sessions.some(s => s.id === id)) {
+      this.activeSessionId = id;
+      localStorage.setItem('wca_active_session_id', this.activeSessionId);
+    }
+  }
+
+  createSession(name) {
+    const newSess = this._createDefaultSession(name || `Session ${this.sessions.length + 1}`);
+    this.sessions.push(newSess);
+    this.activeSessionId = newSess.id;
+    this.saveAll();
+    return newSess;
+  }
+
+  duplicateCurrentSession() {
+    const current = this.getCurrentSession();
+    const duplicated = JSON.parse(JSON.stringify(current));
+    duplicated.id = Date.now() + "_" + Math.random().toString(36).substr(2, 4);
+    duplicated.name = `${current.name} (Copy)`;
+    duplicated.date = Utils.nowString();
+    
+    this.sessions.push(duplicated);
+    this.activeSessionId = duplicated.id;
+    this.saveAll();
+  }
+
+  renameCurrentSession(newName) {
+    const current = this.getCurrentSession();
+    if (current && newName.trim() !== '') {
+      current.name = newName.trim();
+      this.saveAll();
+    }
+  }
+
+  deleteCurrentSession() {
+    if (this.sessions.length <= 1) {
+      alert('⚠️ 最後の1つのセッションは削除できません。');
+      return false;
+    }
+    const idx = this.sessions.findIndex(s => s.id === this.activeSessionId);
+    if (idx >= 0) {
+      this.sessions.splice(idx, 1);
+      this.activeSessionId = this.sessions[Math.max(0, idx - 1)].id;
+      this.saveAll();
+      return true;
+    }
+    return false;
+  }
+
+  resetCurrentAttempts() {
+    const cur = this.getCurrentSession();
+    cur.attempts = [];
+    cur.isCutoffFailed = false;
+    cur.isCutoffPassed = false;
+    this.saveAll();
+  }
+
+  addAttemptToCurrent(attempt) {
+    const cur = this.getCurrentSession();
+    cur.attempts.push(attempt);
+    this.saveAll();
+  }
+
+  undoLastAttempt() {
+    const cur = this.getCurrentSession();
+    if (cur.attempts.length > 0) {
+      cur.attempts.pop();
+      cur.isCutoffFailed = false;
+      cur.isCutoffPassed = false;
+      this.saveAll();
+    }
+  }
+
+  getUsedCumulativeTimeForSession(session) {
+    let total = 0;
+    session.attempts.forEach(a => {
+      total += (a.time || 0);
+    });
+    return total;
+  }
+
+  saveAll() {
+    localStorage.setItem('wca_sessions_list', JSON.stringify(this.sessions));
+    localStorage.setItem('wca_active_session_id', this.activeSessionId);
+  }
+
+  loadSessions() {
+    const data = localStorage.getItem('wca_sessions_list');
+    return data ? JSON.parse(data) : [];
+  }
+
+  loadActiveSessionId() {
+    return localStorage.getItem('wca_active_session_id') || '';
+  }
+
+  loadHistory() {
+    return this.sessions;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+ * 6. PresetManager クラス
+ * ---------------------------------------------------------------------------- */
+class PresetManager {
+  constructor() {
+    this.defaultPresets = {
+      "Japan Nationals": {
+        event: "333", roundName: "Final", format: "ao5", practiceMode: false,
+        timeLimitEnable: true, timeLimitSeconds: 60, cutoffEnable: false, cutoffSeconds: 0,
+        cumEnable: false, cumSeconds: 0, cumGroup: "none"
+      },
+      "BLD Practice": {
+        event: "333bf", roundName: "Practice", format: "bo3", practiceMode: true,
+        timeLimitEnable: true, timeLimitSeconds: 600, cutoffEnable: false, cutoffSeconds: 0,
+        cumEnable: true, cumSeconds: 1200, cumGroup: "Group A"
+      },
+      "My Practice": {
+        event: "333", roundName: "Practice", format: "ao5", practiceMode: true,
+        timeLimitEnable: false, timeLimitSeconds: 60, cutoffEnable: false, cutoffSeconds: 30,
+        cumEnable: false, cumSeconds: 600, cumGroup: "none"
+      }
+    };
+    this.userPresets = this.loadPresets();
+  }
+
+  getAllPresets() {
+    return { ...this.defaultPresets, ...this.userPresets };
+  }
+
+  savePreset(name, config) {
+    this.userPresets[name] = config;
+    localStorage.setItem('wca_timer_presets', JSON.stringify(this.userPresets));
+  }
+
+  loadPresets() {
+    const data = localStorage.getItem('wca_timer_presets');
+    return data ? JSON.parse(data) : {};
+  }
+}
+
+/* ----------------------------------------------------------------------------
+ * 7. App メインコントローラー
+ * ---------------------------------------------------------------------------- */
+class App {
+  constructor() {
+    this.sessionMgr = new SessionManager();
+    this.combinedMgr = new CombinedGroupManager();
+    this.presetMgr = new PresetManager();
+    this.timer = new TimerEngine(this.onTimerTick.bind(this));
+    
+    this.inputMode = 'timer';
+    this.manualDigits = '';
+    this.pendingRawTime = 0;
+
+    this.initDOM();
+    this.bindEvents();
+    this.loadConfigToUI(this.sessionMgr.getCurrentSession().config);
+    this.render();
+  }
+
+  initDOM() {
+    this.dom = {
+      sessionTabsContainer: document.getElementById('session-tabs-container'),
+      btnAddSession: document.getElementById('btn-add-session'),
+      btnRenameSession: document.getElementById('btn-rename-session'),
+      btnDupSession: document.getElementById('btn-dup-session'),
+      btnDelSession: document.getElementById('btn-del-session'),
+
+      dispEventRound: document.getElementById('disp-event-round'),
+      dispFormat: document.getElementById('disp-format'),
+      statusBanner: document.getElementById('status-banner'),
+      timerDisplay: document.getElementById('timer-display'),
+      timerTouchArea: document.getElementById('timer-touch-area'),
+      btnStart: document.getElementById('btn-start'),
+      manualControls: document.getElementById('manual-controls'),
+      btnManualSubmit: document.getElementById('btn-manual-submit'),
+      btnModeTimer: document.getElementById('btn-mode-timer'),
+      btnModeManual: document.getElementById('btn-mode-manual'),
+      limitReachedMsg: document.getElementById('limit-reached-msg'),
+      attemptsContainer: document.getElementById('attempts-container'),
+
+      boxTL: document.getElementById('time-limit-box'),
+      dispTLText: document.getElementById('disp-tl-text'),
+      barTL: document.getElementById('bar-tl'),
+
+      boxCum: document.getElementById('cum-limit-box'),
+      dispCumLabel: document.getElementById('disp-cum-label'),
+      dispCumText: document.getElementById('disp-cum-text'),
+      barCum: document.getElementById('bar-cum'),
+
+      boxCombCum: document.getElementById('combined-cum-limit-box'),
+      dispCombCumLabel: document.getElementById('disp-comb-cum-label'),
+      dispCombCumText: document.getElementById('disp-comb-cum-text'),
+      barCombCum: document.getElementById('bar-comb-cum'),
+
+      statBest: document.getElementById('stat-best'),
+      statMean: document.getElementById('stat-mean'),
+      statAvg: document.getElementById('stat-avg'),
+
+      btnUndo: document.getElementById('btn-undo'),
+      btnReset: document.getElementById('btn-reset'),
+      btnNewSession: document.getElementById('btn-new-session'),
+      btnHistory: document.getElementById('btn-history'),
+
+      setupHeader: document.getElementById('setup-toggle-header'),
+      setupBody: document.getElementById('setup-content-body'),
+      setupArrow: document.getElementById('setup-arrow'),
+      presetSelect: document.getElementById('preset-select'),
+      btnSavePreset: document.getElementById('btn-save-preset'),
+
+      cfgEvent: document.getElementById('cfg-event'),
+      cfgRoundName: document.getElementById('cfg-round-name'),
+      cfgFormat: document.getElementById('cfg-format'),
+      cfgPracticeMode: document.getElementById('cfg-practice-mode'),
+      cfgTLEnable: document.getElementById('cfg-tl-enable'),
+      cfgTLSeconds: document.getElementById('cfg-tl-seconds'),
+      cutoffSetupRow: document.getElementById('cutoff-setup-row'),
+      cfgCutoffLabel: document.getElementById('cfg-cutoff-label'),
+      cfgCutoffEnable: document.getElementById('cfg-cutoff-enable'),
+      cfgCutoffSeconds: document.getElementById('cfg-cutoff-seconds'),
+      cfgCumEnable: document.getElementById('cfg-cum-enable'),
+      cfgCumSeconds: document.getElementById('cfg-cum-seconds'),
+      cfgCumGroup: document.getElementById('cfg-cum-group'),
+
+      cfgGrPAEnable: document.getElementById('cfg-grp-a-enable'),
+      cfgGrPASeconds: document.getElementById('cfg-grp-a-seconds'),
+      cfgGrPBEnable: document.getElementById('cfg-grp-b-enable'),
+      cfgGrPBSeconds: document.getElementById('cfg-grp-b-seconds'),
+      cfgGrPCEnable: document.getElementById('cfg-grp-c-enable'),
+      cfgGrPCSeconds: document.getElementById('cfg-grp-c-seconds'),
+      cfgGrPDEnable: document.getElementById('cfg-grp-d-enable'),
+      cfgGrPDSeconds: document.getElementById('cfg-grp-d-seconds'),
+
+      modalResult: document.getElementById('modal-result'),
+      modalRawTime: document.getElementById('modal-raw-time'),
+      modalNoticeTL: document.getElementById('modal-notice-tl'),
+      modalComment: document.getElementById('modal-comment'),
+      btnSaveResult: document.getElementById('btn-save-result'),
+      penaltyBtns: document.querySelectorAll('.penalty-btn'),
+
+      modalHistory: document.getElementById('modal-history'),
+      historyContainer: document.getElementById('history-container'),
+      btnCloseHistory: document.getElementById('btnCloseHistory')
+    };
+
+    this.updatePresetDropdown();
+    this.loadCombinedGroupConfigsToUI();
+  }
+
+  bindEvents() {
+    // Session 操作ボタン
+    this.dom.btnAddSession.addEventListener('click', () => {
+      const name = prompt('新しいセッション名を入力してください:', `Session ${this.sessionMgr.sessions.length + 1}`);
+      if (name) {
+        this.sessionMgr.createSession(name);
+        this.loadConfigToUI(this.sessionMgr.getCurrentSession().config);
+        this.render();
+      }
+    });
+
+    this.dom.btnRenameSession.addEventListener('click', () => {
+      const cur = this.sessionMgr.getCurrentSession();
+      const newName = prompt('セッション名を変更:', cur.name);
+      if (newName) {
+        this.sessionMgr.renameCurrentSession(newName);
+        this.render();
+      }
+    });
+
+    this.dom.btnDupSession.addEventListener('click', () => {
+      this.sessionMgr.duplicateCurrentSession();
+      this.loadConfigToUI(this.sessionMgr.getCurrentSession().config);
+      this.render();
+    });
+
+    this.dom.btnDelSession.addEventListener('click', () => {
+      const cur = this.sessionMgr.getCurrentSession();
+      if (confirm(`セッション「${cur.name}」を削除しますか？`)) {
+        if (this.sessionMgr.deleteCurrentSession()) {
+          this.loadConfigToUI(this.sessionMgr.getCurrentSession().config);
+          this.render();
+        }
+      }
+    });
+
+    // モード切り替え
+    this.dom.btnModeTimer.addEventListener('click', () => this.setInputMode('timer'));
+    this.dom.btnModeManual.addEventListener('click', () => this.setInputMode('manual'));
+
+    // Setup 折りたたみ表示
+    this.dom.setupHeader.addEventListener('click', () => {
+      const isOpen = this.dom.setupBody.classList.toggle('open');
+      this.dom.setupArrow.textContent = isOpen ? '▲' : '▼';
+    });
+
+    // タイマーエリア全体のタップ/クリックでタイマースタート・ストップ
+    this.dom.timerTouchArea.addEventListener('click', (e) => {
+      // Manualモード中やボタン自体のクリック重複を排除
+      if (this.inputMode !== 'timer') return;
+      this.toggleTimer();
+    });
+
+    // 手入力用 オンスクリーンテンキーパッド (Numpad) イベント
+    document.querySelectorAll('.num-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const key = btn.dataset.key;
+        if (!key) return;
+
+        if (key >= '0' && key <= '9') {
+          if (this.manualDigits.length < 8) {
+            this.manualDigits += key;
+            this.updateManualDisplay();
+          }
+        } else if (key === 'backspace') {
+          this.manualDigits = this.manualDigits.slice(0, -1);
+          this.updateManualDisplay();
+        } else if (key === 'clear') {
+          this.manualDigits = '';
+          this.updateManualDisplay();
+        }
+      });
+    });
+
+    // 手入力確定ボタン
+    this.dom.btnManualSubmit.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.submitManualInput();
+    });
+
+    // PCキーボード操作 (Space: タイマー, 数字キー/Backspace/Enter: 手入力)
+    document.addEventListener('keydown', (e) => {
+      if (this.isModalOrInputActive(e.target)) return;
+
+      if (this.inputMode === 'timer') {
+        if (e.code === 'Space') {
+          e.preventDefault();
+          this.toggleTimer();
+        }
+      } else if (this.inputMode === 'manual') {
+        if (e.key >= '0' && e.key <= '9') {
+          e.preventDefault();
+          if (this.manualDigits.length < 8) {
+            this.manualDigits += e.key;
+            this.updateManualDisplay();
+          }
+        } else if (e.key === 'Backspace') {
+          e.preventDefault();
+          this.manualDigits = this.manualDigits.slice(0, -1);
+          this.updateManualDisplay();
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          this.submitManualInput();
+        }
+      }
+    });
+
+    // 設定変更時のリアルタイム反映
+    const configInputs = [
+      this.dom.cfgEvent, this.dom.cfgRoundName, this.dom.cfgFormat,
+      this.dom.cfgPracticeMode, this.dom.cfgTLEnable, this.dom.cfgTLSeconds,
+      this.dom.cfgCutoffEnable, this.dom.cfgCutoffSeconds,
+      this.dom.cfgCumEnable, this.dom.cfgCumSeconds, this.dom.cfgCumGroup
+    ];
+    configInputs.forEach(input => {
+      input.addEventListener('change', () => this.readUIConfigToSession());
+    });
+
+    // Combined Groups 全体設定の変更イベント
+    const groupInputs = [
+      this.dom.cfgGrPAEnable, this.dom.cfgGrPASeconds,
+      this.dom.cfgGrPBEnable, this.dom.cfgGrPBSeconds,
+      this.dom.cfgGrPCEnable, this.dom.cfgGrPCSeconds,
+      this.dom.cfgGrPDEnable, this.dom.cfgGrPDSeconds
+    ];
+    groupInputs.forEach(input => {
+      input.addEventListener('change', () => this.readCombinedGroupUI());
+    });
+
+    // セッション試技クリア・操作ボタン
+    this.dom.btnReset.addEventListener('click', () => {
+      if (confirm('現在のセッション記録をリセットしますか？')) {
+        this.sessionMgr.resetCurrentAttempts();
+        this.manualDigits = '';
+        this.render();
+      }
+    });
+
+    this.dom.btnUndo.addEventListener('click', () => {
+      this.sessionMgr.undoLastAttempt();
+      this.render();
+    });
+
+    this.dom.btnNewSession.addEventListener('click', () => {
+      if (confirm('現在のセッションの試技リストを削除してクリアしますか？')) {
+        this.sessionMgr.resetCurrentAttempts();
+        this.manualDigits = '';
+        this.render();
+      }
+    });
+
+    // プリセット保存・選択
+    this.dom.presetSelect.addEventListener('change', (e) => {
+      const presets = this.presetMgr.getAllPresets();
+      if (presets[e.target.value]) {
+        this.loadConfigToUI(presets[e.target.value]);
+        this.readUIConfigToSession();
+      }
+    });
+
+    this.dom.btnSavePreset.addEventListener('click', () => {
+      const name = prompt('プリセット名を入力してください:', 'Custom Preset');
+      if (name) {
+        this.presetMgr.savePreset(name, this.getConfigFromUI());
+        this.updatePresetDropdown();
+        this.dom.presetSelect.value = name;
+      }
+    });
+
+    // ペナルティモーダル操作
+    this.selectedPenalty = 0;
+    this.dom.penaltyBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        this.dom.penaltyBtns.forEach(b => b.classList.remove('selected'));
+        e.target.classList.add('selected');
+        this.selectedPenalty = parseInt(e.target.dataset.penalty);
+      });
+    });
+
+    this.dom.btnSaveResult.addEventListener('click', () => {
+      this.saveAttemptResult();
+    });
+
+    // 履歴モーダル
+    this.dom.btnHistory.addEventListener('click', () => {
+      this.showHistoryModal();
+    });
+    this.dom.btnCloseHistory.addEventListener('click', () => {
+      this.dom.modalHistory.classList.remove('active');
+    });
+  }
+
+  isModalOrInputActive(target) {
+    if (this.dom.modalResult.classList.contains('active') || this.dom.modalHistory.classList.contains('active')) {
+      return true;
+    }
+    const tag = target.tagName.toLowerCase();
+    return tag === 'input' || tag === 'select' || tag === 'textarea';
+  }
+
+  setInputMode(mode) {
+    this.inputMode = mode;
+    if (mode === 'timer') {
+      this.dom.btnModeTimer.classList.add('active');
+      this.dom.btnModeManual.classList.remove('active');
+      this.dom.btnStart.style.display = 'inline-flex';
+      this.dom.manualControls.style.display = 'none';
+      this.dom.timerDisplay.textContent = "0.00";
+    } else {
+      this.dom.btnModeManual.classList.add('active');
+      this.dom.btnModeTimer.classList.remove('active');
+      this.dom.btnStart.style.display = 'none';
+      this.dom.manualControls.style.display = 'flex';
+      this.manualDigits = '';
+      this.updateManualDisplay();
+    }
+  }
+
+  updateManualDisplay() {
+    const parsed = Utils.parseManualInput(this.manualDigits);
+    this.dom.timerDisplay.textContent = parsed.text;
+  }
+
+  submitManualInput() {
+    if (!this.canStartTimer()) {
+      alert('⚠️ 累積制限時間(Cumulative Time Limit)に達しているため、新しい試技を記録できません。');
+      return;
+    }
+    if (this.sessionMgr.getCurrentSession().isCutoffFailed) {
+      alert('⚠️ Cutoff目標タイムを突破できなかったため、これ以上の試技は行えません。');
+      return;
+    }
+
+    const parsed = Utils.parseManualInput(this.manualDigits);
+    if (parsed.ms <= 0) {
+      alert('有効なタイムを入力してください。');
+      return;
+    }
+
+    this.handleTimerStop(parsed.ms);
+    this.manualDigits = '';
+    this.updateManualDisplay();
+  }
+
+  getConfigFromUI() {
+    return {
+      event: this.dom.cfgEvent.value,
+      roundName: this.dom.cfgRoundName.value,
+      format: this.dom.cfgFormat.value,
+      practiceMode: this.dom.cfgPracticeMode.checked,
+      timeLimitEnable: this.dom.cfgTLEnable.checked,
+      timeLimitSeconds: parseInt(this.dom.cfgTLSeconds.value) || 0,
+      cutoffEnable: this.dom.cfgCutoffEnable.checked,
+      cutoffSeconds: parseInt(this.dom.cfgCutoffSeconds.value) || 0,
+      cumEnable: this.dom.cfgCumEnable.checked,
+      cumSeconds: parseInt(this.dom.cfgCumSeconds.value) || 0,
+      cumGroup: this.dom.cfgCumGroup.value
+    };
+  }
+
+  loadConfigToUI(config) {
+    this.dom.cfgEvent.value = config.event || '333';
+    this.dom.cfgRoundName.value = config.roundName || 'Round 1';
+    this.dom.cfgFormat.value = config.format || 'ao5';
+    this.dom.cfgPracticeMode.checked = !!config.practiceMode;
+    this.dom.cfgTLEnable.checked = !!config.timeLimitEnable;
+    this.dom.cfgTLSeconds.value = config.timeLimitSeconds || 60;
+    this.dom.cfgCutoffEnable.checked = !!config.cutoffEnable;
+    this.dom.cfgCutoffSeconds.value = config.cutoffSeconds || 30;
+    this.dom.cfgCumEnable.checked = !!config.cumEnable;
+    this.dom.cfgCumSeconds.value = config.cumSeconds || 600;
+    this.dom.cfgCumGroup.value = config.cumGroup || 'none';
+  }
+
+  loadCombinedGroupConfigsToUI() {
+    const grpA = this.combinedMgr.getGroupConfig('Group A');
+    this.dom.cfgGrPAEnable.checked = grpA.enabled;
+    this.dom.cfgGrPASeconds.value = grpA.seconds;
+
+    const grpB = this.combinedMgr.getGroupConfig('Group B');
+    this.dom.cfgGrPBEnable.checked = grpB.enabled;
+    this.dom.cfgGrPBSeconds.value = grpB.seconds;
+
+    const grpC = this.combinedMgr.getGroupConfig('Group C');
+    this.dom.cfgGrPCEnable.checked = grpC.enabled;
+    this.dom.cfgGrPCSeconds.value = grpC.seconds;
+
+    const grpD = this.combinedMgr.getGroupConfig('Group D');
+    this.dom.cfgGrPDEnable.checked = grpD.enabled;
+    this.dom.cfgGrPDSeconds.value = grpD.seconds;
+  }
+
+  readCombinedGroupUI() {
+    this.combinedMgr.setGroupConfig('Group A', this.dom.cfgGrPAEnable.checked, parseInt(this.dom.cfgGrPASeconds.value) || 0);
+    this.combinedMgr.setGroupConfig('Group B', this.dom.cfgGrPBEnable.checked, parseInt(this.dom.cfgGrPBSeconds.value) || 0);
+    this.combinedMgr.setGroupConfig('Group C', this.dom.cfgGrPCEnable.checked, parseInt(this.dom.cfgGrPCSeconds.value) || 0);
+    this.combinedMgr.setGroupConfig('Group D', this.dom.cfgGrPDEnable.checked, parseInt(this.dom.cfgGrPDSeconds.value) || 0);
+    this.render();
+  }
+
+  readUIConfigToSession() {
+    this.sessionMgr.getCurrentSession().config = this.getConfigFromUI();
+    this.sessionMgr.saveAll();
+    this.render();
+  }
+
+  updatePresetDropdown() {
+    const presets = this.presetMgr.getAllPresets();
+    this.dom.presetSelect.innerHTML = '<option value="">-- プリセット選択 --</option>';
+    Object.keys(presets).forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      this.dom.presetSelect.appendChild(opt);
+    });
+  }
+
+  /* --------------------------------------------------------------------------
+   * タイマー制御およびルール適用フロー
+   * -------------------------------------------------------------------------- */
+  toggleTimer() {
+    if (this.timer.isRunning) {
+      const timeMs = this.timer.stop();
+      this.handleTimerStop(timeMs);
+    } else {
+      if (!this.canStartTimer()) {
+        alert('⚠️ 累積制限時間(Cumulative Time Limit)に達しているため、新しい試技を開始できません。');
+        return;
+      }
+      if (this.sessionMgr.getCurrentSession().isCutoffFailed) {
+        alert('⚠️ Cutoff目標タイムを突破できなかったため、これ以上の試技は行えません。');
+        return;
+      }
+      
+      this.dom.btnStart.textContent = "STOP";
+      this.dom.btnStart.classList.replace('btn-primary', 'btn-danger');
+      this.timer.start();
+    }
+  }
+
+  canStartTimer() {
+    const curSession = this.sessionMgr.getCurrentSession();
+    const cfg = curSession.config;
+    if (cfg.practiceMode) return true;
+
+    if (cfg.cumEnable) {
+      const usedMs = this.sessionMgr.getUsedCumulativeTimeForSession(curSession);
+      const limitMs = cfg.cumSeconds * 1000;
+      if (usedMs >= limitMs) return false;
+    }
+
+    if (cfg.cumGroup && cfg.cumGroup !== 'none') {
+      const grpCfg = this.combinedMgr.getGroupConfig(cfg.cumGroup);
+      if (grpCfg.enabled) {
+        const combUsedMs = this.combinedMgr.getUsedTimeForGroup(cfg.cumGroup, this.sessionMgr.sessions);
+        const combLimitMs = grpCfg.seconds * 1000;
+        if (combUsedMs >= combLimitMs) return false;
+      }
+    }
+
+    return true;
+  }
+
+  onTimerTick(ms) {
+    this.dom.timerDisplay.textContent = Utils.formatTime(ms);
+
+    const cfg = this.sessionMgr.getCurrentSession().config;
+    if (cfg.timeLimitEnable && cfg.timeLimitSeconds > 0) {
+      const limitMs = cfg.timeLimitSeconds * 1000;
+      const remain = Math.max(0, limitMs - ms);
+      const ratio = remain / limitMs;
+      this.updateProgressBar(this.dom.barTL, ratio);
+      this.dom.dispTLText.textContent = `${Utils.formatTime(ms)} / ${Utils.formatTime(limitMs)}`;
+    }
+  }
+
+  handleTimerStop(rawMs) {
+    this.dom.btnStart.textContent = "START";
+    this.dom.btnStart.classList.replace('btn-danger', 'btn-primary');
+
+    this.pendingRawTime = rawMs;
+    const curSession = this.sessionMgr.getCurrentSession();
+    const cfg = curSession.config;
+
+    let autoPenalty = 0;
+    let isLimitOver = false;
+
+    if (!cfg.practiceMode) {
+      if (cfg.timeLimitEnable && rawMs >= cfg.timeLimitSeconds * 1000) {
+        autoPenalty = -1;
+        isLimitOver = true;
+      }
+
+      if (cfg.cumEnable) {
+        const usedMs = this.sessionMgr.getUsedCumulativeTimeForSession(curSession);
+        const limitMs = cfg.cumSeconds * 1000;
+        if (usedMs + rawMs > limitMs) {
+          autoPenalty = -1;
+          isLimitOver = true;
+        }
+      }
+
+      if (cfg.cumGroup && cfg.cumGroup !== 'none') {
+        const grpCfg = this.combinedMgr.getGroupConfig(cfg.cumGroup);
+        if (grpCfg.enabled) {
+          const combUsedMs = this.combinedMgr.getUsedTimeForGroup(cfg.cumGroup, this.sessionMgr.sessions);
+          const combLimitMs = grpCfg.seconds * 1000;
+          if (combUsedMs + rawMs > combLimitMs) {
+            autoPenalty = -1;
+            isLimitOver = true;
+          }
+        }
+      }
+    }
+
+    this.showResultModal(rawMs, autoPenalty, isLimitOver);
+  }
+
+  showResultModal(rawMs, autoPenalty, isLimitOver) {
+    this.dom.modalRawTime.textContent = Utils.formatTime(rawMs);
+    this.dom.modalComment.value = '';
+    
+    if (isLimitOver) {
+      this.dom.modalNoticeTL.classList.add('active');
+    } else {
+      this.dom.modalNoticeTL.classList.remove('active');
+    }
+
+    this.selectedPenalty = autoPenalty;
+    this.dom.penaltyBtns.forEach(btn => {
+      btn.classList.remove('selected');
+      if (parseInt(btn.dataset.penalty) === autoPenalty) {
+        btn.classList.add('selected');
+      }
+    });
+
+    this.dom.modalResult.classList.add('active');
+  }
+
+  saveAttemptResult() {
+    const attempt = {
+      time: this.pendingRawTime,
+      penalty: this.selectedPenalty,
+      comment: this.dom.modalComment.value
+    };
+
+    this.sessionMgr.addAttemptToCurrent(attempt);
+    this.dom.modalResult.classList.remove('active');
+
+    const curSession = this.sessionMgr.getCurrentSession();
+    const cfg = curSession.config;
+
+    const cutoffResult = RuleEngine.checkCutoff(curSession.attempts, cfg);
+    if (cutoffResult.evaluated) {
+      if (cutoffResult.passed) {
+        curSession.isCutoffPassed = true;
+        curSession.isCutoffFailed = false;
+        alert(`🎉 Cutoff クリア！ (${Utils.formatTime(cutoffResult.bestTime)} < ${cfg.cutoffSeconds}s)\n残りの試技に進みます。`);
+      } else {
+        curSession.isCutoffFailed = true;
+        curSession.isCutoffPassed = false;
+        alert(`❌ Cutoff 未達成 (${Utils.formatTime(cutoffResult.bestTime)} >= ${cfg.cutoffSeconds}s)\nルールによりラウンド終了となります。`);
+      }
+    }
+
+    if (!cfg.practiceMode) {
+      if (cfg.cumEnable) {
+        const usedMs = this.sessionMgr.getUsedCumulativeTimeForSession(curSession);
+        const limitMs = cfg.cumSeconds * 1000;
+        if (usedMs >= limitMs) {
+          if (usedMs > limitMs) {
+            alert(`⛔ 累積制限時間(Cumulative Limit)を超過したため、この試技はDNFとなり本ラウンドの試技は終了します。`);
+          } else {
+            alert(`ℹ️ 累積制限時間(Cumulative Limit)の上限にちょうど達しました (${Utils.formatTime(usedMs)} / ${Utils.formatTime(limitMs)})\n本ラウンドの試技は終了です。`);
+          }
+        }
+      }
+
+      if (cfg.cumGroup && cfg.cumGroup !== 'none') {
+        const grpCfg = this.combinedMgr.getGroupConfig(cfg.cumGroup);
+        if (grpCfg.enabled) {
+          const combUsedMs = this.combinedMgr.getUsedTimeForGroup(cfg.cumGroup, this.sessionMgr.sessions);
+          const combLimitMs = grpCfg.seconds * 1000;
+          if (combUsedMs >= combLimitMs) {
+            if (combUsedMs > combLimitMs) {
+              alert(`⛔ Combined Cumulative Limit (${cfg.cumGroup}) を超過したため、この試技はDNFとなり本グループの試技は終了します。`);
+            } else {
+              alert(`ℹ️ Combined Cumulative Limit (${cfg.cumGroup}) の上限にちょうど達しました。\n本グループの試技は終了です。`);
+            }
+          }
+        }
+      }
+    }
+
+    this.sessionMgr.saveAll();
+    this.render();
+  }
+
+  /* --------------------------------------------------------------------------
+   * 画面描画（レンダリング）関連
+   * -------------------------------------------------------------------------- */
+  render() {
+    const session = this.sessionMgr.getCurrentSession();
+    const cfg = session.config;
+
+    this.renderSessionTabs();
+
+    const eventText = this.dom.cfgEvent.options[this.dom.cfgEvent.selectedIndex].text;
+    this.dom.dispEventRound.textContent = `${eventText} - ${cfg.roundName}`;
+    
+    let formatText = this.dom.cfgFormat.options[this.dom.cfgFormat.selectedIndex].text;
+    if (cfg.cutoffEnable) {
+      if (cfg.format === 'ao5') formatText = `Best of 2 / Average of 5`;
+      if (cfg.format === 'mo3') formatText = `Best of 1 / Mean of 3`;
+    }
+    if (cfg.practiceMode) formatText += " (Practice Mode)";
+    this.dom.dispFormat.textContent = formatText;
+
+    this.updateCutoffSetupUI(cfg.format);
+    this.updateStatusBanner();
+
+    if (cfg.timeLimitEnable && cfg.timeLimitSeconds > 0) {
+      this.dom.boxTL.style.display = 'flex';
+      const limitMs = cfg.timeLimitSeconds * 1000;
+      this.dom.dispTLText.textContent = `0.00 / ${Utils.formatTime(limitMs)}`;
+      this.updateProgressBar(this.dom.barTL, 1.0);
+    } else {
+      this.dom.boxTL.style.display = 'none';
+    }
+
+    if (cfg.cumEnable && cfg.cumSeconds > 0) {
+      this.dom.boxCum.style.display = 'flex';
+      const usedMs = this.sessionMgr.getUsedCumulativeTimeForSession(session);
+      const totalMs = cfg.cumSeconds * 1000;
+      const remainMs = Math.max(0, totalMs - usedMs);
+      const ratio = remainMs / totalMs;
+
+      this.dom.dispCumLabel.textContent = 'Cumulative Limit';
+      this.dom.dispCumText.textContent = `残り ${Utils.formatTime(remainMs)} / ${Utils.formatTime(totalMs)}`;
+      this.updateProgressBar(this.dom.barCum, ratio);
+    } else {
+      this.dom.boxCum.style.display = 'none';
+    }
+
+    if (cfg.cumGroup && cfg.cumGroup !== 'none') {
+      const grpCfg = this.combinedMgr.getGroupConfig(cfg.cumGroup);
+      if (grpCfg.enabled && grpCfg.seconds > 0) {
+        this.dom.boxCombCum.style.display = 'flex';
+        const combUsedMs = this.combinedMgr.getUsedTimeForGroup(cfg.cumGroup, this.sessionMgr.sessions);
+        const combTotalMs = grpCfg.seconds * 1000;
+        const combRemainMs = Math.max(0, combTotalMs - combUsedMs);
+        const combRatio = combRemainMs / combTotalMs;
+
+        this.dom.dispCombCumLabel.textContent = `Combined Cumulative Limit (${cfg.cumGroup})`;
+        this.dom.dispCombCumText.textContent = `残り ${Utils.formatTime(combRemainMs)} / ${Utils.formatTime(combTotalMs)}`;
+        this.updateProgressBar(this.dom.barCombCum, combRatio);
+      } else {
+        this.dom.boxCombCum.style.display = 'none';
+      }
+    } else {
+      this.dom.boxCombCum.style.display = 'none';
+    }
+
+    const maxAttempts = RuleEngine.getMaxAttempts(cfg.format);
+    this.dom.attemptsContainer.innerHTML = '';
+
+    for (let i = 0; i < maxAttempts; i++) {
+      const attempt = session.attempts[i];
+      const card = document.createElement('div');
+      card.className = `attempt-card ${i === session.attempts.length ? 'active' : ''}`;
+
+      let valText = '--';
+      if (attempt) {
+        const effTime = RuleEngine.getEffectiveTime(attempt);
+        if (effTime === -1) {
+          valText = 'DNF';
+        } else {
+          valText = Utils.formatTime(effTime);
+          if (attempt.penalty === 2000) valText += ' (+2)';
+        }
+      }
+
+      card.innerHTML = `
+        <div class="num">Attempt ${i + 1}</div>
+        <div class="val">${valText}</div>
+      `;
+      this.dom.attemptsContainer.appendChild(card);
+    }
+
+    const best = RuleEngine.calculateBest(session.attempts);
+    const mean = RuleEngine.calculateMean(session.attempts);
+    const avg = RuleEngine.calculateAo5(session.attempts);
+
+    this.dom.statBest.textContent = Utils.formatTime(best);
+    this.dom.statMean.textContent = Utils.formatTime(mean);
+    this.dom.statAvg.textContent = Utils.formatTime(avg);
+  }
+
+  renderSessionTabs() {
+    const container = this.dom.sessionTabsContainer;
+    container.innerHTML = '';
+
+    this.sessionMgr.sessions.forEach(s => {
+      const btn = document.createElement('button');
+      btn.className = `session-tab ${s.id === this.sessionMgr.activeSessionId ? 'active' : ''}`;
+      btn.textContent = `${s.id === this.sessionMgr.activeSessionId ? '●' : '○'} ${s.name}`;
+      btn.addEventListener('click', () => {
+        this.sessionMgr.setActiveSession(s.id);
+        this.loadConfigToUI(this.sessionMgr.getCurrentSession().config);
+        this.render();
+      });
+      container.appendChild(btn);
+    });
+  }
+
+  updateCutoffSetupUI(format) {
+    if (format === 'bo1' || format === 'bo2' || format === 'bo3') {
+      this.dom.cutoffSetupRow.style.display = 'none';
+    } else {
+      this.dom.cutoffSetupRow.style.display = 'grid';
+      if (format === 'ao5') {
+        this.dom.cfgCutoffLabel.textContent = 'Cutoff ON (2 attempts)';
+      } else if (format === 'mo3') {
+        this.dom.cfgCutoffLabel.textContent = 'Cutoff ON (1 attempt)';
+      }
+    }
+  }
+
+  updateStatusBanner() {
+    const session = this.sessionMgr.getCurrentSession();
+    const cfg = session.config;
+    const banner = this.dom.statusBanner;
+
+    banner.className = 'status-banner';
+    banner.style.display = 'none';
+    this.dom.limitReachedMsg.style.display = 'none';
+
+    if (cfg.cumEnable && !cfg.practiceMode) {
+      const usedMs = this.sessionMgr.getUsedCumulativeTimeForSession(session);
+      const limitMs = cfg.cumSeconds * 1000;
+      if (usedMs >= limitMs) {
+        banner.textContent = '⛔ 累積制限時間(Cumulative Time Limit)に達したため、新しい試技は行えません。';
+        banner.classList.add('danger');
+        this.dom.btnStart.disabled = true;
+        this.dom.btnManualSubmit.disabled = true;
+        this.dom.limitReachedMsg.style.display = 'block';
+        return;
+      }
+    }
+
+    if (cfg.cumGroup && cfg.cumGroup !== 'none' && !cfg.practiceMode) {
+      const grpCfg = this.combinedMgr.getGroupConfig(cfg.cumGroup);
+      if (grpCfg.enabled) {
+        const combUsedMs = this.combinedMgr.getUsedTimeForGroup(cfg.cumGroup, this.sessionMgr.sessions);
+        const combLimitMs = grpCfg.seconds * 1000;
+        if (combUsedMs >= combLimitMs) {
+          banner.textContent = `⛔ Combined Cumulative Limit (${cfg.cumGroup}) に達したため、新しい試技は行えません。`;
+          banner.classList.add('danger');
+          this.dom.btnStart.disabled = true;
+          this.dom.btnManualSubmit.disabled = true;
+          this.dom.limitReachedMsg.style.display = 'block';
+          return;
+        }
+      }
+    }
+
+    if (session.isCutoffFailed) {
+      banner.textContent = '⛔ Cutoff条件を満たさなかったため、本ラウンドの試技は終了しました。';
+      banner.classList.add('danger');
+      this.dom.btnStart.disabled = true;
+      this.dom.btnManualSubmit.disabled = true;
+      return;
+    } else if (session.isCutoffPassed) {
+      banner.textContent = '✅ Cutoff条件をクリアしました！全試技に進めます。';
+      banner.classList.add('success');
+      this.dom.btnStart.disabled = false;
+      this.dom.btnManualSubmit.disabled = false;
+      return;
+    }
+
+    this.dom.btnStart.disabled = false;
+    this.dom.btnManualSubmit.disabled = false;
+  }
+
+  updateProgressBar(element, ratio) {
+    const pct = Math.max(0, Math.min(100, ratio * 100));
+    element.style.width = `${pct}%`;
+
+    if (ratio >= 0.5) {
+      element.style.backgroundColor = 'var(--status-green)';
+    } else if (ratio >= 0.2) {
+      element.style.backgroundColor = 'var(--status-yellow)';
+    } else {
+      element.style.backgroundColor = 'var(--status-red)';
+    }
+  }
+
+  showHistoryModal() {
+    const sessions = this.sessionMgr.loadHistory();
+    this.dom.historyContainer.innerHTML = '';
+
+    if (sessions.length === 0) {
+      this.dom.historyContainer.innerHTML = '<div style="text-align:center; color:var(--text-muted);">履歴はありません。</div>';
+    } else {
+      sessions.forEach(s => {
+        const best = RuleEngine.calculateBest(s.attempts);
+        const avg = RuleEngine.calculateAo5(s.attempts);
+        const dnfCount = s.attempts.filter(a => a.penalty === -1).length;
+
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.innerHTML = `
+          <div>
+            <strong>${s.name} (${s.config.event} - ${s.config.roundName})</strong><br>
+            <span style="color:var(--text-muted)">Best: ${Utils.formatTime(best)} | Avg: ${Utils.formatTime(avg)} | DNF: ${dnfCount}</span>
+          </div>
+        `;
+        this.dom.historyContainer.appendChild(item);
+      });
+    }
+
+    this.dom.modalHistory.classList.add('active');
+  }
+}
+
+/* ----------------------------------------------------------------------------
+ * 8. アプリケーション起動
+ * ---------------------------------------------------------------------------- */
+window.addEventListener('DOMContentLoaded', () => {
+  window.app = new App();
+});
+</script>
+</body>
+</html>
