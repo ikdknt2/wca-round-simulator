@@ -130,15 +130,10 @@ const timeLimitInput = document.querySelector('#time-limit-input');
 const timeLimitSummary = document.querySelector('#time-limit-summary');
 const timeLimitCaption = document.querySelector('#time-limit-caption');
 const practiceMode = document.querySelector('#practice-mode');
-const remainingTime = document.querySelector('#remaining-time');
-const remainingTimeBar = document.querySelector('#remaining-time-bar');
-const timeLimitModeText = document.querySelector('#time-limit-mode-text');
 
 const timePattern = /^(?:(\d{1,2}):)?(\d{1,2})(?:\.(\d{1,3}))?$/;
 
 let currentRule = new Rule(formatSelect.value);
-let timeLimitTimer = null;
-let timeLimitDeadline = null;
 
 function parseTimeToMilliseconds(timeText) {
   const normalizedTime = timeText.trim();
@@ -192,117 +187,25 @@ function getTimeLimitText() {
   return limitMs === null ? 'OFF' : formatMilliseconds(limitMs);
 }
 
-function getBarClassName(percentRemaining) {
-  if (percentRemaining < 20) {
-    return 'danger';
-  }
-
-  if (percentRemaining < 50) {
-    return 'warning';
-  }
-
-  return '';
-}
 
 function updateTimeLimitSummary() {
   const limitMs = getTimeLimitMilliseconds();
-  const isCompetitionMode = !practiceMode.checked;
-
   timeLimitSummary.textContent = getTimeLimitText();
-  timeLimitCaption.textContent = limitMs === null
-    ? 'Time Limit OFF'
-    : `${isCompetitionMode ? 'Competition' : 'Practice'} Mode`;
-  timeLimitModeText.textContent = isCompetitionMode
-    ? 'Competition Mode: 超過時はDNFで保存されます。'
-    : 'Practice Mode: 超過時も保存し、Warningを表示します。';
-
-  updateRemainingTime(limitMs, limitMs);
-}
-
-function updateRemainingTime(remainingMs, limitMs) {
-  const safeLimitMs = limitMs ?? 0;
-  const safeRemainingMs = Math.max(remainingMs ?? 0, 0);
-  const percentRemaining = safeLimitMs > 0 ? (safeRemainingMs / safeLimitMs) * 100 : 0;
-
-  remainingTime.textContent = safeLimitMs > 0 ? formatMilliseconds(safeRemainingMs) : 'OFF';
-  remainingTimeBar.style.width = `${Math.max(0, Math.min(100, percentRemaining))}%`;
-  remainingTimeBar.className = getBarClassName(percentRemaining);
-}
-
-function stopTimeLimitCountdown() {
-  if (timeLimitTimer !== null) {
-    clearInterval(timeLimitTimer);
-    timeLimitTimer = null;
-  }
-
-  timeLimitDeadline = null;
-}
-
-function startTimeLimitCountdown() {
-  stopTimeLimitCountdown();
-
-  const limitMs = getTimeLimitMilliseconds();
-  if (limitMs === null) {
-    updateRemainingTime(null, null);
-    return;
-  }
-
-  timeLimitDeadline = Date.now() + limitMs;
-  updateRemainingTime(limitMs, limitMs);
-
-  timeLimitTimer = setInterval(() => {
-    const remainingMs = timeLimitDeadline - Date.now();
-    updateRemainingTime(remainingMs, limitMs);
-
-    if (remainingMs <= 0) {
-      saveAutomaticDnf(limitMs);
-    }
-  }, 100);
-}
-
-function saveAutomaticDnf(limitMs) {
-  stopTimeLimitCountdown();
-
-  if (!attemptDialog.open) {
-    return;
-  }
-
-  if (attempts.length >= getAllowedAttemptCount()) {
-    closeAttemptDialog();
-    return;
-  }
-
-  attempts.push({
-    timeText: formatMilliseconds(limitMs),
-    timeMs: limitMs,
-    penalty: 'DNF',
-    comment: 'Time Limit exceeded: auto DNF',
-    warning: '',
-  });
-
-  renderAttempts();
-  closeAttemptDialog();
+  timeLimitCaption.textContent = limitMs === null ? 'Time Limit OFF' : 'Time Limit ON';
 }
 
 function applyTimeLimitToAttempt(attempt) {
   const limitMs = getTimeLimitMilliseconds();
 
-  if (limitMs === null || attempt.timeMs <= limitMs) {
+  if (limitMs === null || attempt.timeMs < limitMs) {
     return attempt;
-  }
-
-  if (practiceMode.checked) {
-    return {
-      ...attempt,
-      warning: 'Warning: Time Limitを超過しています。',
-    };
   }
 
   return {
     ...attempt,
     penalty: 'DNF',
     warning: '',
-    comment: attempt.comment || 'Time Limit exceeded',
+    comment: attempt.comment || 'Time Limit reached or exceeded',
   };
 }
 
@@ -448,12 +351,10 @@ function openAttemptDialog() {
   formError.textContent = '';
   attemptForm.reset();
   attemptDialog.showModal();
-  startTimeLimitCountdown();
   document.querySelector('#attempt-time').focus();
 }
 
 function closeAttemptDialog() {
-  stopTimeLimitCountdown();
   attemptDialog.close();
   updateTimeLimitSummary();
 }
