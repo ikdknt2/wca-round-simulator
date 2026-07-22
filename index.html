@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WCA Session Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="hero-card" aria-labelledby="app-title">
+      <div>
+        <p class="eyebrow">WCA Session Manager</p>
+        <h1 id="app-title">Round Control</h1>
+        <p class="hero-text">大会セッションのイベント、ラウンド、試技状況を確認するためのダークテーマUIです。</p>
+      </div>
+      <div class="status-pill" aria-label="Current status">
+        <span class="status-dot"></span>
+        Ready
+      </div>
+    </section>
+
+    <section class="control-panel" aria-label="操作画面">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">Always visible</p>
+          <h2>操作画面</h2>
+        </div>
+        <button class="icon-button" type="button" aria-label="More options">•••</button>
+      </div>
+
+      <div class="summary-grid">
+        <article class="info-card">
+          <span class="card-label">Event</span>
+          <strong>3x3x3 Cube</strong>
+          <small>Event名</small>
+        </article>
+        <article class="info-card">
+          <span class="card-label">Round</span>
+          <strong>First Round</strong>
+          <small>Round名</small>
+        </article>
+        <article class="info-card">
+          <span class="card-label">Format</span>
+          <strong>Average of 5</strong>
+          <small>Ao5</small>
+        </article>
+      </div>
+
+      <div class="rule-grid">
+        <article class="metric-card accent-blue">
+          <div class="card-title-row">
+            <h3>Time Limit</h3>
+            <span>TL</span>
+          </div>
+          <p class="metric-value">10:00</p>
+          <p class="metric-caption">各試技の制限時間</p>
+        </article>
+
+        <article class="metric-card accent-purple">
+          <div class="card-title-row">
+            <h3>Cumulative</h3>
+            <span>CUM</span>
+          </div>
+          <p class="metric-value">20:00</p>
+          <p class="metric-caption">ラウンド内の累積制限</p>
+        </article>
+
+        <article class="metric-card accent-green">
+          <div class="card-title-row">
+            <h3>Combined Cumulative</h3>
+            <span>GROUP</span>
+          </div>
+          <p class="metric-value">30:00</p>
+          <p class="metric-caption">Combined Group A</p>
+        </article>
+      </div>
+
+      <article class="attempt-card">
+        <div>
+          <span class="card-label">Attempt</span>
+          <h3>Attempt 1 / 5</h3>
+          <p>次の試技を開始できます。</p>
+        </div>
+        <button class="start-button" type="button">Start</button>
+      </article>
+
+      <section class="attempt-list-card" aria-labelledby="attempt-list-title">
+        <div class="section-header compact">
+          <div>
+            <p class="eyebrow">Attempts</p>
+            <h2 id="attempt-list-title">試技一覧</h2>
+          </div>
+        </div>
+
+        <div class="attempt-list">
+          <div class="attempt-row current">
+            <span class="attempt-number">01</span>
+            <span class="attempt-name">Attempt 1</span>
+            <span class="attempt-status">Waiting</span>
+          </div>
+          <div class="attempt-row">
+            <span class="attempt-number">02</span>
+            <span class="attempt-name">Attempt 2</span>
+            <span class="attempt-status muted">Pending</span>
+          </div>
+          <div class="attempt-row">
+            <span class="attempt-number">03</span>
+            <span class="attempt-name">Attempt 3</span>
+            <span class="attempt-status muted">Pending</span>
+          </div>
+          <div class="attempt-row">
+            <span class="attempt-number">04</span>
+            <span class="attempt-name">Attempt 4</span>
+            <span class="attempt-status muted">Pending</span>
+          </div>
+          <div class="attempt-row">
+            <span class="attempt-number">05</span>
+            <span class="attempt-name">Attempt 5</span>
+            <span class="attempt-status muted">Pending</span>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <details class="setup-panel">
+      <summary>
+        <span>
+          <span class="eyebrow">Configuration</span>
+          <strong>Setup</strong>
+        </span>
+        <span class="summary-hint">折りたたみ</span>
+      </summary>
+
+      <form class="setup-form" aria-label="Setup form">
+        <label>
+          <span>Event</span>
+          <select>
+            <option>3x3x3 Cube</option>
+            <option>2x2x2 Cube</option>
+            <option>4x4x4 Cube</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Round</span>
+          <input type="text" value="First Round">
+        </label>
+
+        <label>
+          <span>Format</span>
+          <select>
+            <option>Average of 5</option>
+            <option>Mean of 3</option>
+            <option>Best of 3</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Time Limit</span>
+          <input type="text" value="10:00">
+        </label>
+
+        <label>
+          <span>Cutoff</span>
+          <input type="text" value="1:00 / Best of 2">
+        </label>
+
+        <label>
+          <span>Cumulative</span>
+          <input type="text" value="20:00">
+        </label>
+
+        <label>
+          <span>Combined Group</span>
+          <input type="text" value="Group A">
+        </label>
+
+        <label class="toggle-field">
+          <span>Practice Mode</span>
+          <span class="toggle" aria-hidden="true">
+            <span class="toggle-thumb"></span>
+          </span>
+        </label>
+      </form>
+    </details>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
