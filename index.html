@@ -14,12 +14,12 @@
     <section class="hero-card" aria-labelledby="app-title">
       <div>
         <p class="eyebrow">WCA Session Manager</p>
-        <h1 id="app-title">Round Control</h1>
-        <p class="hero-text">大会セッションのイベント、ラウンド、試技状況を確認するためのダークテーマUIです。</p>
+        <h1 id="app-title">Session Control</h1>
+        <p class="hero-text">WCAルールに基づくラウンド設定と試技記録を管理するためのセッションマネージャーです。</p>
       </div>
       <div class="status-pill" aria-label="Current status">
         <span class="status-dot"></span>
-        Ready
+        Session Ready
       </div>
     </section>
 
@@ -81,11 +81,11 @@
 
       <article class="attempt-card">
         <div>
-          <span class="card-label">Attempt</span>
-          <h3>Attempt 1 / 5</h3>
-          <p>次の試技を開始できます。</p>
+          <span class="card-label">Attempt Entry</span>
+          <h3>試技記録を追加</h3>
+          <p>Time / Penalty / Commentを入力してAttempt一覧へ保存します。</p>
         </div>
-        <button class="start-button" type="button">Start</button>
+        <button class="primary-button" id="open-attempt-dialog" type="button">試技追加</button>
       </article>
 
       <section class="attempt-list-card" aria-labelledby="attempt-list-title">
@@ -96,32 +96,8 @@
           </div>
         </div>
 
-        <div class="attempt-list">
-          <div class="attempt-row current">
-            <span class="attempt-number">01</span>
-            <span class="attempt-name">Attempt 1</span>
-            <span class="attempt-status">Waiting</span>
-          </div>
-          <div class="attempt-row">
-            <span class="attempt-number">02</span>
-            <span class="attempt-name">Attempt 2</span>
-            <span class="attempt-status muted">Pending</span>
-          </div>
-          <div class="attempt-row">
-            <span class="attempt-number">03</span>
-            <span class="attempt-name">Attempt 3</span>
-            <span class="attempt-status muted">Pending</span>
-          </div>
-          <div class="attempt-row">
-            <span class="attempt-number">04</span>
-            <span class="attempt-name">Attempt 4</span>
-            <span class="attempt-status muted">Pending</span>
-          </div>
-          <div class="attempt-row">
-            <span class="attempt-number">05</span>
-            <span class="attempt-name">Attempt 5</span>
-            <span class="attempt-status muted">Pending</span>
-          </div>
+        <div class="attempt-list" id="attempt-list" aria-live="polite">
+          <p class="empty-state" id="empty-attempts">まだ試技記録はありません。</p>
         </div>
       </section>
     </section>
@@ -188,6 +164,45 @@
       </form>
     </details>
   </main>
+
+  <dialog class="attempt-dialog" id="attempt-dialog" aria-labelledby="attempt-dialog-title">
+    <form class="dialog-card" id="attempt-form" method="dialog">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">Attempt Result</p>
+          <h2 id="attempt-dialog-title">記録入力</h2>
+        </div>
+        <button class="icon-button" id="close-attempt-dialog" type="button" aria-label="閉じる">×</button>
+      </div>
+
+      <label>
+        <span>Time</span>
+        <input id="attempt-time" name="time" type="text" placeholder="12.35 / 1:23.45 / 12:34.56" autocomplete="off" required>
+      </label>
+      <p class="field-help">入力形式を表示に保持し、内部ではミリ秒として保存します。</p>
+
+      <label>
+        <span>Penalty</span>
+        <select id="attempt-penalty" name="penalty">
+          <option value="None">None</option>
+          <option value="+2">+2</option>
+          <option value="DNF">DNF</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Comment <small>任意</small></span>
+        <textarea id="attempt-comment" name="comment" rows="3" placeholder="メモを入力"></textarea>
+      </label>
+
+      <p class="form-error" id="form-error" role="alert"></p>
+
+      <div class="dialog-actions">
+        <button class="secondary-button" id="cancel-attempt" type="button">キャンセル</button>
+        <button class="primary-button" type="submit">保存</button>
+      </div>
+    </form>
+  </dialog>
 
   <script src="script.js"></script>
 </body>

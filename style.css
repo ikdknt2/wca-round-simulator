@@ -34,7 +34,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -242,7 +243,7 @@ h3 {
   margin-bottom: 18px;
 }
 
-.start-button {
+.primary-button {
   min-width: 150px;
   border: 0;
   border-radius: 999px;
@@ -264,7 +265,7 @@ h3 {
 
 .attempt-row {
   display: grid;
-  grid-template-columns: 56px 1fr auto;
+  grid-template-columns: 56px 1fr auto auto;
   align-items: center;
   gap: 16px;
   padding: 16px;
@@ -284,6 +285,11 @@ h3 {
 
 .attempt-name {
   font-weight: 700;
+}
+
+.attempt-comment {
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
 .attempt-status {
@@ -339,7 +345,10 @@ h3 {
 }
 
 .setup-form input,
-.setup-form select {
+.setup-form select,
+.dialog-card input,
+.dialog-card select,
+.dialog-card textarea {
   width: 100%;
   border: 1px solid var(--outline);
   border-radius: var(--radius-sm);
@@ -388,7 +397,7 @@ h3 {
     align-items: stretch;
   }
 
-  .start-button {
+  .primary-button {
     width: 100%;
   }
 }
@@ -408,8 +417,97 @@ h3 {
     grid-template-columns: 44px 1fr;
   }
 
-  .attempt-status {
+  .attempt-status,
+  .attempt-comment {
     grid-column: 2;
     width: fit-content;
+  }
+}
+
+
+.empty-state {
+  margin: 0;
+  padding: 22px;
+  border: 1px dashed var(--outline);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.attempt-dialog {
+  width: min(560px, calc(100% - 32px));
+  border: 0;
+  padding: 0;
+  color: var(--text);
+  background: transparent;
+}
+
+.attempt-dialog::backdrop {
+  background: rgba(3, 7, 18, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.dialog-card {
+  display: grid;
+  gap: 18px;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  background: linear-gradient(145deg, var(--surface-elevated), var(--surface));
+  box-shadow: var(--shadow);
+}
+
+.dialog-header,
+.dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dialog-card label {
+  display: grid;
+  gap: 10px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.dialog-card small,
+.field-help {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.field-help,
+.form-error {
+  margin: -8px 0 0;
+  font-size: 0.9rem;
+}
+
+.form-error {
+  min-height: 1.2em;
+  color: #ff9aa2;
+  font-weight: 700;
+}
+
+.secondary-button {
+  border: 1px solid var(--outline);
+  border-radius: 999px;
+  padding: 14px 22px;
+  color: var(--text);
+  background: var(--surface-soft);
+  font-weight: 800;
+}
+
+@media (max-width: 560px) {
+  .dialog-card,
+  .dialog-header,
+  .dialog-actions {
+    align-items: stretch;
+  }
+
+  .dialog-header,
+  .dialog-actions {
+    flex-direction: column;
   }
 }
